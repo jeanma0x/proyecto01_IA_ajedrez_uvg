@@ -17,14 +17,27 @@ export function ChessBoard({
 }: ChessBoardProps) {
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingMove, setIsSubmittingMove] = useState(false);
+  const whiteIsHuman = game.white.participant.type === "human";
+const blackIsHuman = game.black.participant.type === "human";
+
+const boardOrientation =
+  !whiteIsHuman && blackIsHuman ? "black" : "white";
+
+const currentTurnIsHuman =
+  game.turn === "white" ? whiteIsHuman : blackIsHuman;
+
+const canInteract =
+  game.status === "active" &&
+  currentTurnIsHuman &&
+  !isSubmittingMove;
 
   function handlePieceDrop({
     sourceSquare,
     targetSquare,
   }: PieceDropHandlerArgs): boolean {
-    if (!targetSquare || isSubmittingMove) {
-      return false;
-    }
+   if (!targetSquare || !canInteract) {
+  return false;
+}
 
     setError(null);
     setIsSubmittingMove(true);
@@ -58,14 +71,14 @@ export function ChessBoard({
           width: "min(80vw, 650px)",
         }}
       >
-        <Chessboard
-          options={{
-            position: game.fen,
-            onPieceDrop: handlePieceDrop,
-            allowDragging:
-              game.status === "active" && !isSubmittingMove,
-          }}
-        />
+       <Chessboard
+  options={{
+    position: game.fen,
+    boardOrientation,
+    onPieceDrop: handlePieceDrop,
+    allowDragging: canInteract,
+  }}
+/>
       </div>
 
       <p>
@@ -74,7 +87,9 @@ export function ChessBoard({
           {game.turn === "white" ? "Blancas" : "Negras"}
         </strong>
       </p>
-
+{game.status === "active" && !currentTurnIsHuman && (
+  <p>Esperando movimiento de la IA...</p>
+)}
       <p>
         Movimientos: <strong>{game.moveCount}</strong>
       </p>
