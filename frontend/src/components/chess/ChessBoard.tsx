@@ -1,33 +1,54 @@
 import { useState } from "react";
-import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import type { PieceDropHandlerArgs } from "react-chessboard";
 
-export function ChessBoard() {
-  const [game, setGame] = useState(() => new Chess());
+import { makeMove } from "../../services/api/gameApi";
+import { ApiClientError } from "../../services/api/apiClient";
+import type { GameState } from "../../types/api";
+
+interface ChessBoardProps {
+  game: GameState;
+  onGameChange: (game: GameState) => void;
+}
+
+export function ChessBoard({
+  game,
+  onGameChange,
+}: ChessBoardProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmittingMove, setIsSubmittingMove] = useState(false);
 
   function handlePieceDrop({
     sourceSquare,
     targetSquare,
   }: PieceDropHandlerArgs): boolean {
-    if (!targetSquare) {
+    if (!targetSquare || isSubmittingMove) {
       return false;
     }
 
-    const gameCopy = new Chess(game.fen());
+    setError(null);
+    setIsSubmittingMove(true);
 
-    try {
-      gameCopy.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: "q",
+    void makeMove(game.id, {
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: "q",
+    })
+      .then((updatedGame) => {
+        onGameChange(updatedGame);
+      })
+      .catch((caughtError: unknown) => {
+        if (caughtError instanceof ApiClientError) {
+          setError(caughtError.message);
+        } else {
+          setError("No fue posible procesar el movimiento.");
+        }
+      })
+      .finally(() => {
+        setIsSubmittingMove(false);
       });
 
-      setGame(gameCopy);
-      return true;
-    } catch {
-      return false;
-    }
+    return true;
   }
 
   return (
@@ -39,15 +60,28 @@ export function ChessBoard() {
       >
         <Chessboard
           options={{
-            position: game.fen(),
+            position: game.fen,
             onPieceDrop: handlePieceDrop,
+            allowDragging:
+              game.status === "active" && !isSubmittingMove,
           }}
         />
       </div>
 
       <p>
-        Turno: <strong>{game.turn() === "w" ? "Blancas" : "Negras"}</strong>
+        Turno:{" "}
+        <strong>
+          {game.turn === "white" ? "Blancas" : "Negras"}
+        </strong>
       </p>
+
+      <p>
+        Movimientos: <strong>{game.moveCount}</strong>
+      </p>
+
+      {isSubmittingMove && <p>Procesando movimiento...</p>}
+
+      {error && <p role="alert">{error}</p>}
     </section>
   );
 }
