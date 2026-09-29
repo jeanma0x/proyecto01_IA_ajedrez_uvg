@@ -6,6 +6,7 @@ import { GameConfiguration } from "./features/game/components/GameConfiguration"
 import type { GameState } from "./types/api";
 import { MoveHistory } from "./features/game/components/MoveHistory";
 import { GameControls } from "./features/game/components/GameControls";
+import { GameResult } from "./features/game/components/GameResult";
 
 function App() {
   const [game, setGame] = useState<GameState | null>(null);
@@ -31,29 +32,39 @@ function App() {
       )}
 {game && (
   <>
-   <ChessBoard
-  game={game}
-  onGameChange={setGame}
-/>
+    <ChessBoard
+      game={game}
+      onGameChange={setGame}
+    />
 
-<GameControls
-  game={game}
-  onGameChange={setGame}
-/>
+    <GameControls
+      game={game}
+      onGameChange={setGame}
+    />
 
-<MoveHistory
-  gameId={game.id}
-  moveCount={game.moveCount}
-/>
+    <MoveHistory
+      gameId={game.id}
+      moveCount={game.moveCount}
+    />
 
-    <button
-      type="button"
-      onClick={handleNewGame}
-    >
-      Nueva partida
-    </button>
+    <GameResult
+      game={game}
+      onNewGame={handleNewGame}
+    />
+
+    {game.status !== "finished" &&
+      game.status !== "incident" && (
+        <button
+          type="button"
+          onClick={handleNewGame}
+        >
+          Nueva partida
+        </button>
+      )}
   </>
 )}
+
+    
     </main>
   );
 }
