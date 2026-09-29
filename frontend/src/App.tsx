@@ -5,6 +5,8 @@ import { GameConfiguration } from "./features/game/components/GameConfiguration"
 
 import type { GameState } from "./types/api";
 
+import { MoveHistory } from "./features/game/components/MoveHistory";
+
 function App() {
   const [game, setGame] = useState<GameState | null>(null);
 
@@ -27,22 +29,26 @@ function App() {
       {!game && (
         <GameConfiguration onGameCreated={setGame} />
       )}
+{game && (
+  <>
+    <ChessBoard
+      game={game}
+      onGameChange={setGame}
+    />
 
-      {game && (
-        <>
-          <ChessBoard
-            game={game}
-            onGameChange={setGame}
-          />
+    <MoveHistory
+      gameId={game.id}
+      moveCount={game.moveCount}
+    />
 
-          <button
-            type="button"
-            onClick={handleNewGame}
-          >
-            Nueva partida
-          </button>
-        </>
-      )}
+    <button
+      type="button"
+      onClick={handleNewGame}
+    >
+      Nueva partida
+    </button>
+  </>
+)}
     </main>
   );
 }

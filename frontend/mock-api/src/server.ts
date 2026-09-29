@@ -119,6 +119,19 @@ app.post("/api/games", (request, response) => {
     );
   }
 
+  if (
+    whiteParticipant.type === "ai" &&
+    blackParticipant.type === "ai" &&
+    whiteParticipant.id === blackParticipant.id
+  ) {
+    return sendError(
+      response,
+      400,
+      "VALIDATION_ERROR",
+      "Los participantes IA deben utilizar modelos diferentes.",
+    );
+  }
+
   if (whiteParticipant.type === "ai" && !body.whiteDifficulty) {
     return sendError(
       response,
@@ -173,7 +186,6 @@ app.post("/api/games", (request, response) => {
 
   return response.status(201).json(gameState);
 });
-
 // ---------------------------------------------------------
 // Consultar partida
 // ---------------------------------------------------------

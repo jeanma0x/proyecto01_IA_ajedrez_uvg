@@ -74,8 +74,15 @@ export function GameConfiguration({
     (participant) => participant.id === blackParticipantId,
   );
 
-  const configurationIsValid =
-    Boolean(whiteParticipant) && Boolean(blackParticipant);
+const sameAiSelected =
+  whiteParticipant?.type === "ai" &&
+  blackParticipant?.type === "ai" &&
+  whiteParticipant.id === blackParticipant.id;
+
+const configurationIsValid =
+  Boolean(whiteParticipant) &&
+  Boolean(blackParticipant) &&
+  !sameAiSelected;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,6 +91,11 @@ export function GameConfiguration({
       setError("Selecciona ambos participantes.");
       return;
     }
+
+    if (sameAiSelected) {
+  setError("Selecciona modelos de IA diferentes para cada bando.");
+  return;
+}
 
     setError(null);
     setIsCreatingGame(true);
@@ -233,6 +245,12 @@ export function GameConfiguration({
               </select>
             </div>
           )}
+
+          {sameAiSelected && (
+  <p role="alert">
+    Selecciona modelos de IA diferentes para cada bando.
+  </p>
+)}
 
           <button
             type="submit"
