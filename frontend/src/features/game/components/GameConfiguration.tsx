@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import { ApiClientError } from "../../../services/api/apiClient";
@@ -9,6 +8,7 @@ import {
 
 import type {
   Difficulty,
+  GameSpeed,
   GameState,
   Participant,
 } from "../../../types/api";
@@ -40,12 +40,17 @@ export function GameConfiguration({
   const [blackDifficulty, setBlackDifficulty] =
     useState<Difficulty>("beginner");
 
+  const [gameSpeed, setGameSpeed] =
+    useState<GameSpeed>("normal");
+
   const [isLoadingParticipants, setIsLoadingParticipants] =
     useState(true);
 
-  const [isCreatingGame, setIsCreatingGame] = useState(false);
+  const [isCreatingGame, setIsCreatingGame] =
+    useState(false);
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     async function loadParticipants() {
@@ -74,17 +79,23 @@ export function GameConfiguration({
     (participant) => participant.id === blackParticipantId,
   );
 
-const sameAiSelected =
-  whiteParticipant?.type === "ai" &&
-  blackParticipant?.type === "ai" &&
-  whiteParticipant.id === blackParticipant.id;
+  const isAiVsAi =
+    whiteParticipant?.type === "ai" &&
+    blackParticipant?.type === "ai";
 
-const configurationIsValid =
-  Boolean(whiteParticipant) &&
-  Boolean(blackParticipant) &&
-  !sameAiSelected;
+  const sameAiSelected =
+    whiteParticipant?.type === "ai" &&
+    blackParticipant?.type === "ai" &&
+    whiteParticipant.id === blackParticipant.id;
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const configurationIsValid =
+    Boolean(whiteParticipant) &&
+    Boolean(blackParticipant) &&
+    !sameAiSelected;
+
+  async function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (!whiteParticipant || !blackParticipant) {
@@ -93,9 +104,11 @@ const configurationIsValid =
     }
 
     if (sameAiSelected) {
-  setError("Selecciona modelos de IA diferentes para cada bando.");
-  return;
-}
+      setError(
+        "Selecciona modelos de IA diferentes para cada bando.",
+      );
+      return;
+    }
 
     setError(null);
     setIsCreatingGame(true);
@@ -111,6 +124,10 @@ const configurationIsValid =
 
         ...(blackParticipant.type === "ai"
           ? { blackDifficulty }
+          : {}),
+
+        ...(isAiVsAi
+          ? { speed: gameSpeed }
           : {}),
       });
 
@@ -247,14 +264,39 @@ const configurationIsValid =
           )}
 
           {sameAiSelected && (
-  <p role="alert">
-    Selecciona modelos de IA diferentes para cada bando.
-  </p>
-)}
+            <p role="alert">
+              Selecciona modelos de IA diferentes para cada bando.
+            </p>
+          )}
+
+          {isAiVsAi && !sameAiSelected && (
+            <div>
+              <label htmlFor="game-speed">
+                Velocidad
+              </label>
+
+              <select
+                id="game-speed"
+                value={gameSpeed}
+                onChange={(event) =>
+                  setGameSpeed(
+                    event.target.value as GameSpeed,
+                  )
+                }
+              >
+                <option value="normal">Normal</option>
+                <option value="fast">Rápida</option>
+                <option value="maximum">Máxima</option>
+              </select>
+            </div>
+          )}
 
           <button
             type="submit"
-            disabled={!configurationIsValid || isCreatingGame}
+            disabled={
+              !configurationIsValid ||
+              isCreatingGame
+            }
           >
             {isCreatingGame
               ? "Creando partida..."
