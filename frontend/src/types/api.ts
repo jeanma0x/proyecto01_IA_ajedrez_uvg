@@ -71,6 +71,11 @@ export interface GameState {
   startedAt: string | null;
   endedAt: string | null;
   moveCount: number;
+
+  lastMove?: {
+    from: string;
+    to: string;
+  };
 }
 
 export interface CreateGameRequest {
@@ -106,10 +111,16 @@ export interface ApiError {
     | "UNAVAILABLE"
     | "INVALID_FORMAT"
     | "INTERNAL_ERROR";
+
   message: string;
   details?: Record<string, unknown>;
 }
 
 export interface ApiErrorResponse {
   error: ApiError;
+}
+
+export interface LegalMovesResponse {
+  from: string;
+  targets: string[];
 }

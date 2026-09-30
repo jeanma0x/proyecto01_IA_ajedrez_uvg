@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { Chess } from "chess.js";
+import type { Square } from "chess.js";
 import { randomUUID } from "node:crypto";
 
 import { participants } from "./data.js";
@@ -94,7 +95,6 @@ app.get("/api/health", (_request, response) => {
 app.get("/api/participants", (_request, response) => {
   response.json(participants);
 });
-
 // ---------------------------------------------------------
 // Crear partida
 // ---------------------------------------------------------
@@ -110,6 +110,7 @@ app.post("/api/games", (request, response) => {
     (participant) => participant.id === body.blackParticipantId,
   );
 
+  // Validar que ambos participantes existan.
   if (!whiteParticipant || !blackParticipant) {
     return sendError(
       response,
@@ -119,6 +120,7 @@ app.post("/api/games", (request, response) => {
     );
   }
 
+  // No permitir que el mismo modelo de IA juegue contra sí mismo.
   if (
     whiteParticipant.type === "ai" &&
     blackParticipant.type === "ai" &&
@@ -132,7 +134,11 @@ app.post("/api/games", (request, response) => {
     );
   }
 
-  if (whiteParticipant.type === "ai" && !body.whiteDifficulty) {
+  // Toda IA que juegue con blancas necesita dificultad.
+  if (
+    whiteParticipant.type === "ai" &&
+    !body.whiteDifficulty
+  ) {
     return sendError(
       response,
       400,
@@ -141,7 +147,11 @@ app.post("/api/games", (request, response) => {
     );
   }
 
-  if (blackParticipant.type === "ai" && !body.blackDifficulty) {
+  // Toda IA que juegue con negras necesita dificultad.
+  if (
+    blackParticipant.type === "ai" &&
+    !body.blackDifficulty
+  ) {
     return sendError(
       response,
       400,
@@ -159,24 +169,42 @@ app.post("/api/games", (request, response) => {
     white: {
       participant: whiteParticipant,
       color: "white",
-      difficulty: body.whiteDifficulty,
+      difficulty:
+        whiteParticipant.type === "ai"
+          ? body.whiteDifficulty
+          : undefined,
     },
 
     black: {
       participant: blackParticipant,
       color: "black",
-      difficulty: body.blackDifficulty,
+      difficulty:
+        blackParticipant.type === "ai"
+          ? body.blackDifficulty
+          : undefined,
     },
 
     status: "active",
+
+    // Posición inicial oficial.
     fen: chess.fen(),
+
     turn: "white",
+
     result: null,
     reason: null,
+
+    // La velocidad solo tiene efecto real en IA vs IA,
+    // pero mantenemos "normal" como valor por defecto.
     speed: body.speed ?? "normal",
+
     startedAt: new Date().toISOString(),
     endedAt: null,
+
     moveCount: 0,
+
+    // No existe última jugada al crear la partida.
+    // Por eso no inicializamos lastMove.
   };
 
   games.set(gameId, {
@@ -287,6 +315,10 @@ app.post("/api/games/:id/moves", (request, response) => {
     game.state.fen = chess.fen();
     game.state.turn = getTurnColor(chess);
     game.state.moveCount = game.moves.length;
+    game.state.lastMove = {
+  from: result.from,
+  to: result.to,
+};
 
     updateTerminalState(game.state, chess);
 
@@ -371,6 +403,70 @@ app.patch("/api/games/:id/control", (request, response) => {
     "VALIDATION_ERROR",
     "Acción de control no reconocida.",
   );
+});
+
+
+
+// ---------------------------------------------------------
+// Movimientos legales desde una casilla
+// ---------------------------------------------------------
+
+app.get("/api/games/:id/legal-moves", (request, response) => {
+  const game = games.get(request.params.id);
+
+  if (!game) {
+    return sendError(
+      response,
+      404,
+      "GAME_NOT_FOUND",
+      "La partida solicitada no existe.",
+    );
+  }
+
+  if (game.state.status !== "active") {
+    return sendError(
+      response,
+      409,
+      "GAME_NOT_ACTIVE",
+      "La partida no está activa.",
+    );
+  }
+
+  const from = request.query.from;
+
+  if (typeof from !== "string" || !from) {
+    return sendError(
+      response,
+      400,
+      "VALIDATION_ERROR",
+      "Debe indicarse una casilla de origen.",
+    );
+  }
+
+  const chess = new Chess(game.state.fen);
+
+  try {
+    const moves = chess.moves({
+      square: from as Square,
+      verbose: true,
+    });
+
+    return response.json({
+      from,
+      targets: [
+        ...new Set(
+          moves.map((move) => move.to),
+        ),
+      ],
+    });
+  } catch {
+    return sendError(
+      response,
+      400,
+      "VALIDATION_ERROR",
+      "La casilla indicada no es válida.",
+    );
+  }
 });
 
 // ---------------------------------------------------------
