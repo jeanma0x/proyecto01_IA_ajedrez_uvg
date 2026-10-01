@@ -20,21 +20,23 @@ falta aprobar) · `Pendiente` (aún sin definir) · `Descartada` (se evaluó y n
 | 2026-09-25 | Reparto de los 4 frentes de trabajo | Confirmada | Equipo (reunión) | Frente 1: Gabriel Contreras y Julián Amado. Frentes 2 y 3: Jean Marco. Frente 4: Jorge Zamora. Ver `03-FRENTES_CHECKLIST.md` |
 | — | Fecha interna de cierre: 8 de octubre de 2026 | Confirmada | Equipo | Un día antes de la presentación oficial |
 | 2026-09-25 | Hosting en Vercel, base de datos en Neon (Postgres serverless) | Confirmada | Jean Marco | Reemplaza la propuesta original de ejecución 100% local con SQLite. Ver `01-ARQUITECTURA.md` |
-| 2026-09-25 | Backend: API routes/Route Handlers de Next.js (en vez de Express serverless) | Propuesta | Claude Code (análisis técnico) | Next.js corre nativo en Vercel sin capa de adaptación extra; reduce configuración de despliegue con el tiempo limitado hasta el 8-oct. Falta aprobación del equipo — ver justificación completa en `01-ARQUITECTURA.md` |
+| 2026-10-01 | Backend: API routes/Route Handlers de Next.js (en vez de Express serverless) | Confirmada | Jean Marco | Next.js corre nativo en Vercel sin capa de adaptación extra; un solo framework para frontend y backend; encaja directo con Prisma+Neon. Decidido por Jean Marco (dueño de Frente 2/3) para no bloquear el arranque del backend — ver justificación completa en `01-ARQUITECTURA.md` |
 | 2026-09-25 | Persistencia: SQLite (descartada) | Descartada | — | Sustituida por Neon Postgres al confirmarse el hosting en Vercel |
 | 2026-09-25 | Modelos: Google Gemini 2.5 Flash + Mistral `mistral-small-latest` + OpenAI `gpt-oss-120b` vía Groq (reemplaza a DeepSeek) | Propuesta | Claude Code (investigación web) | DeepSeek dejó de tener modelos gratuitos en OpenRouter desde julio 2026 (confirmado por búsqueda web). El reemplazo usa la empresa creadora (OpenAI) como "tercera empresa", resolviendo la ambigüedad Groq-vs-Meta. Ver detalle y fuentes en `04-MODELOS_PENDIENTE.md`. Pasa a `Confirmada` tras la prueba real de 10 movimientos por modelo |
 
 ## Pendientes de alto nivel para la reunión del equipo
 
-1. Aprobar la recomendación de Next.js sobre Express serverless (o sustituirla) — los 4 integrantes
-   deben estar de acuerdo antes de que Frente 2/3 empiecen a programar.
-2. Validar en firme los 3 modelos (Gemini, Mistral, `gpt-oss` vía Groq): correr la prueba real de 10
-   movimientos por modelo antes de comprometerse.
-3. Aprobar la funcionalidad adicional definitiva (una sola, con dueño claro de su implementación).
-4. Elegir herramienta de gestión de tareas (Jira / Azure Boards / otra).
+1. Validar en firme los 3 modelos (Gemini, Mistral, `gpt-oss` vía Groq): correr la prueba real de 10
+   movimientos por modelo antes de comprometerse. (Trabajo de Jean Marco dentro de Frente 2, no
+   requiere reunión de equipo.)
+2. Aprobar la funcionalidad adicional definitiva (una sola, con dueño claro de su implementación).
+3. Elegir herramienta de gestión de tareas (Jira / Azure Boards / otra).
 
 ~~Asignar responsables por frente~~ — **Confirmado el 2026-09-25**, ver tabla arriba y
 `03-FRENTES_CHECKLIST.md`.
+
+~~Aprobar Next.js vs. Express~~ — **Confirmado el 2026-10-01** por Jean Marco (dueño de Frente 2/3),
+para no bloquear el arranque del backend. Ver tabla arriba.
 
 ## Cómo actualizar este archivo
 
