@@ -43,6 +43,31 @@ el host (Groq) o el creador del modelo.
 - **Conclusión:** con Vercel Pro + Neon free, el proyecto queda cómodo en cómputo/timeout; el único
   límite real a diseñar alrededor es el cold start de Neon.
 
+## Prueba real de 10 movimientos — 2026-10-01 (Jean Marco + Claude Code)
+
+Ejecutada contra la API real de cada proveedor, con claves reales, usando el adaptador del backend
+(`backend/scripts/test-ten-moves.ts`). Resultado:
+
+| Modelo | Resultado | Notas |
+| --- | --- | --- |
+| **OpenAI `gpt-oss-120b` vía Groq** | ✅ **10/10 movimientos legales** | Partida real y coherente (Petroff: 1.e4 Nf6 2.Nf3 Nxe4 3.Be2 Nf6 4.Bc4 Nc6 5.O-O d5). Solo 2 reintentos transitorios por servicio no disponible. **Pasa la prueba de viabilidad.** |
+| **Google Gemini** | ⚠️ **1/10** en el primer intento, luego cuota agotada | La key funciona y el primer movimiento salió perfecto con `responseSchema` (JSON estructurado: `{"from":"e2","to":"e4"}`). Pero a partir del 2º-3er intento, **todas** las llamadas devolvieron `429 RESOURCE_EXHAUSTED` ("Límite de cuota alcanzado"), incluso espaciando los reintentos 10s y usando un timeout de reintento de 5s adicional entre jugadas — no se recuperó durante la sesión de prueba (~5 minutos), lo que sugiere un **tope diario**, no solo por-minuto, agotado entre nuestras propias pruebas repetidas. **No pasa la prueba todavía** — repetir con mucho más espaciamiento (o al día siguiente) antes de dar por buena esta cuota para una demo real. |
+| **Mistral AI** | ❌ Bloqueado, sin probar | La consola ("Mistral Studio") no deja generar una API key en el plan gratuito sin "Upgrade". Investigación adicional sugiere que esto podría ser simplemente **activar el plan "Experiment" (gratis, sin tarjeta) en la sección de Billing**, no necesariamente un plan de pago — el botón "Upgrade" en la pantalla de keys es ambiguo. **Pendiente de que alguien del equipo revise Billing → seleccionar plan "Experiment"** antes de descartar Mistral definitivamente. |
+
+**Dos bugs reales encontrados y corregidos en el backend durante esta prueba** (no son problema de los
+proveedores):
+1. `gemini-2.5-flash` ya no existe para cuentas nuevas (Google lo retiró) — el adaptador se actualizó
+   a `gemini-3.8-flash`.
+2. El límite de tokens de salida (`maxOutputTokens: 200` para "principiante") era insuficiente para
+   modelos de razonamiento como `gpt-oss`: gastan tokens pensando antes de llamar a la función, y si
+   se quedan sin tokens, el proveedor rechaza la respuesta ("model did not call a tool"). Se subieron
+   los límites a 600/900/1200 según nivel.
+
+**Conclusión parcial:** con Groq confirmado al 100%, el proyecto **ya tiene al menos un modelo
+production-ready**. Gemini necesita una prueba más paciente (hay evidencia de que funciona, solo falta
+confirmar que la cuota diaria alcanza para una partida real sin ráfagas de pruebas). Mistral sigue
+bloqueado en la consola — revisar Billing antes de la próxima sesión.
+
 ## Candidatos propuestos (histórico — ver tabla de investigación arriba para el estado vigente)
 
 | Empresa | Modelo candidato | Acceso propuesto | Condición a verificar |
@@ -102,11 +127,11 @@ modelo Llama (Meta) también vía Groq — ahí sí persistiría la duda Groq-vs
 resolverla con el docente antes de depender de esa opción.
 
 ## Checklist de esta decisión
-- [ ] Prueba de conexión + 10 movimientos legales ejecutada para Google/Gemini
-- [ ] Prueba de conexión + 10 movimientos legales ejecutada para Mistral AI
-- [ ] Prueba de conexión + 10 movimientos legales ejecutada para OpenAI `gpt-oss` vía Groq
-- [ ] Confirmado que las tres empresas creadoras son distintas entre sí (Google, Mistral AI, OpenAI)
-- [ ] Condición gratuita de cada una documentada con fecha de verificación
-- [ ] Alternativa de respaldo identificada para al menos un modelo
+- [ ] Prueba de conexión + 10 movimientos legales ejecutada para Google/Gemini — 1/10 el 2026-10-01, repetir con más espaciamiento
+- [ ] Prueba de conexión + 10 movimientos legales ejecutada para Mistral AI — bloqueado en consola, ver arriba
+- [x] Prueba de conexión + 10 movimientos legales ejecutada para OpenAI `gpt-oss` vía Groq — 10/10 el 2026-10-01
+- [x] Confirmado que las tres empresas creadoras son distintas entre sí (Google, Mistral AI, OpenAI)
+- [x] Condición gratuita de cada una documentada con fecha de verificación
+- [x] Alternativa de respaldo identificada para al menos un modelo (Groq ya es el respaldo usado de DeepSeek)
 - [ ] Parámetros de los 3 niveles de dificultad definidos y probados por modelo
-- [ ] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable
+- [ ] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — queda `Propuesta` hasta cerrar Gemini y Mistral

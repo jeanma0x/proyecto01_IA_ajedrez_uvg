@@ -13,7 +13,7 @@ let groqAdapter: AiAdapter | null = null;
 // (ver CLAUDE.md, "convenciones de código").
 export function getAdapterForParticipantId(participantId: string): AiAdapter {
   switch (participantId) {
-    case "gemini-2-5-flash": {
+    case "gemini-flash": {
       googleAdapter ??= new GoogleAdapter(requireEnv("GEMINI_API_KEY"));
       return googleAdapter;
     }

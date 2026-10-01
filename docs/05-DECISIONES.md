@@ -22,12 +22,16 @@ falta aprobar) · `Pendiente` (aún sin definir) · `Descartada` (se evaluó y n
 | 2026-09-25 | Hosting en Vercel, base de datos en Neon (Postgres serverless) | Confirmada | Jean Marco | Reemplaza la propuesta original de ejecución 100% local con SQLite. Ver `01-ARQUITECTURA.md` |
 | 2026-10-01 | Backend: API routes/Route Handlers de Next.js (en vez de Express serverless) | Confirmada | Jean Marco | Next.js corre nativo en Vercel sin capa de adaptación extra; un solo framework para frontend y backend; encaja directo con Prisma+Neon. Decidido por Jean Marco (dueño de Frente 2/3) para no bloquear el arranque del backend — ver justificación completa en `01-ARQUITECTURA.md` |
 | 2026-09-25 | Persistencia: SQLite (descartada) | Descartada | — | Sustituida por Neon Postgres al confirmarse el hosting en Vercel |
-| 2026-09-25 | Modelos: Google Gemini 2.5 Flash + Mistral `mistral-small-latest` + OpenAI `gpt-oss-120b` vía Groq (reemplaza a DeepSeek) | Propuesta | Claude Code (investigación web) | DeepSeek dejó de tener modelos gratuitos en OpenRouter desde julio 2026 (confirmado por búsqueda web). El reemplazo usa la empresa creadora (OpenAI) como "tercera empresa", resolviendo la ambigüedad Groq-vs-Meta. Ver detalle y fuentes en `04-MODELOS_PENDIENTE.md`. Pasa a `Confirmada` tras la prueba real de 10 movimientos por modelo |
+| 2026-09-25 | Modelos: Google Gemini + Mistral `mistral-small-latest` + OpenAI `gpt-oss-120b` vía Groq (reemplaza a DeepSeek) | Propuesta | Claude Code (investigación web) | DeepSeek dejó de tener modelos gratuitos en OpenRouter desde julio 2026 (confirmado por búsqueda web). El reemplazo usa la empresa creadora (OpenAI) como "tercera empresa", resolviendo la ambigüedad Groq-vs-Meta. Ver detalle y fuentes en `04-MODELOS_PENDIENTE.md` |
+| 2026-10-01 | OpenAI `gpt-oss-120b` vía Groq | Confirmada | Jean Marco | Prueba real de 10 movimientos legales consecutivos: 10/10 con claves reales. Primer modelo production-ready del proyecto. Ver evidencia en `04-MODELOS_PENDIENTE.md` |
+| 2026-10-01 | Google Gemini (ahora `gemini-3.8-flash`, ya no `gemini-2.5-flash`) | Pendiente | Jean Marco | Key válida, responde con JSON estructurado correcto, pero la cuota gratuita se agotó al 2°-3er intento durante la prueba real (parece tope diario, no solo por-minuto) y no se recuperó en ~5 min de espera. Falta repetir la prueba con más espaciamiento (o al día siguiente) antes de confirmar. Ver `04-MODELOS_PENDIENTE.md` |
+| 2026-10-01 | Mistral AI — generación de API key | Pendiente | Jean Marco | La consola ("Mistral Studio") pide "Upgrade" para generar una key, incluso en el plan gratuito. Podría ser solo activar el plan "Experiment" (gratis) en Billing, no necesariamente un plan de pago — falta revisarlo. Si sigue bloqueado, hace falta una cuarta empresa de respaldo. Ver `04-MODELOS_PENDIENTE.md` |
 
 ## Pendientes de alto nivel para la reunión del equipo
 
-1. Validar en firme los 3 modelos (Gemini, Mistral, `gpt-oss` vía Groq): correr la prueba real de 10
-   movimientos por modelo antes de comprometerse. (Trabajo de Jean Marco dentro de Frente 2, no
+1. Validar en firme Gemini y Mistral (`gpt-oss` vía Groq ya quedó confirmado el 2026-10-01, 10/10
+   movimientos reales). Gemini necesita repetir la prueba con más espaciamiento; Mistral necesita
+   desbloquear la generación de API key en su consola. (Trabajo de Jean Marco dentro de Frente 2, no
    requiere reunión de equipo.)
 2. Aprobar la funcionalidad adicional definitiva (una sola, con dueño claro de su implementación).
 3. Elegir herramienta de gestión de tareas (Jira / Azure Boards / otra).

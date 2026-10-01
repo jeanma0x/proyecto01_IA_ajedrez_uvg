@@ -17,7 +17,7 @@ export class GoogleAdapter implements AiAdapter {
 
   private client: GoogleGenAI;
 
-  constructor(apiKey: string, modelId = "gemini-2.5-flash") {
+  constructor(apiKey: string, modelId = "gemini-3.8-flash") {
     this.client = new GoogleGenAI({ apiKey });
     this.modelId = modelId;
   }

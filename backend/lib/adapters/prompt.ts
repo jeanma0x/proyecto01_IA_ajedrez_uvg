@@ -8,20 +8,26 @@ export interface DifficultyProfile {
 
 // Perfiles de prompting por nivel — ver docs/01-ARQUITECTURA.md. Son etiquetas
 // de configuración, no una afirmación de fuerza real de ajedrez.
+//
+// maxOutputTokens alto incluso en "beginner": modelos de razonamiento (ej.
+// gpt-oss vía Groq) gastan tokens en razonamiento interno antes de llamar a
+// la función — con un límite bajo, el proveedor corta la respuesta antes de
+// emitir la jugada y la rechaza ("model did not call a tool"). Confirmado
+// empíricamente el 2026-10-01, ver docs/04-MODELOS_PENDIENTE.md.
 export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   beginner: {
     temperature: 0.9,
-    maxOutputTokens: 200,
+    maxOutputTokens: 600,
     instruction: "Elige rápidamente una jugada legal razonable. No expliques tu razonamiento.",
   },
   advanced: {
     temperature: 0.5,
-    maxOutputTokens: 400,
+    maxOutputTokens: 900,
     instruction: "Analiza brevemente la posición antes de decidir tu jugada.",
   },
   master: {
     temperature: 0.2,
-    maxOutputTokens: 600,
+    maxOutputTokens: 1200,
     instruction: "Compara al menos dos jugadas candidatas y elige la mejor antes de responder.",
   },
 };

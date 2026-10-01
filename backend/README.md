@@ -10,7 +10,8 @@ en `../docs/05-DECISIONES.md` (2026-10-01).
 
 ## Setup local
 
-1. Copiar `.env.example` a `.env.local` y completar:
+1. Copiar `.env.example` a `.env` y completar (usamos `.env`, no `.env.local`, para que
+   tanto Next.js como el CLI de Prisma lo lean sin configuración extra):
    - `DATABASE_URL`: cadena de conexión de un proyecto en [Neon](https://neon.tech).
    - `GEMINI_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY`: ver `../docs/04-MODELOS_PENDIENTE.md`.
 2. Instalar dependencias: `npm install`

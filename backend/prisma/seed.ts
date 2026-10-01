@@ -11,11 +11,11 @@ const participants = [
     modelId: null,
   },
   {
-    id: "gemini-2-5-flash",
+    id: "gemini-flash",
     type: "ai" as const,
-    displayName: "Gemini 2.5 Flash",
+    displayName: "Gemini 3.8 Flash",
     company: "Google",
-    modelId: "gemini-2.5-flash",
+    modelId: "gemini-3.8-flash",
   },
   {
     id: "mistral-small",
