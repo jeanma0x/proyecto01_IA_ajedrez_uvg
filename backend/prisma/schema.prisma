@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ParticipantType {
+  human
+  ai
+}
+
+enum Difficulty {
+  beginner
+  advanced
+  master
+}
+
+enum ChessColor {
+  white
+  black
+}
+
+enum GameStatus {
+  configured
+  active
+  paused
+  finished
+  incident
+}
+
+enum GameResult {
+  white_win
+  black_win
+  draw
+  technical_incident
+}
+
+enum GameEndReason {
+  checkmate
+  draw
+  stalemate
+  insufficient_material
+  threefold_repetition
+  fifty_move_rule
+  human_resignation
+  technical_incident
+}
+
+enum GameSpeed {
+  normal
+  fast
+  maximum
+}
+
+// Códigos de error estandarizados del contrato de adaptadores — ver docs/01-ARQUITECTURA.md
+enum AiAttemptOutcome {
+  accepted
+  illegal_move
+  invalid_format
+  timeout
+  rate_limit
+  auth_error
+  unavailable
+}
+
+// Participantes fijos (1 humano + 3 modelos IA) — se siembran con prisma/seed.ts,
+// no se crean dinámicamente por partida. RN-02: toda IA requiere empresa y modelo.
+model Participant {
+  id          String          @id
+  type        ParticipantType
+  displayName String
+  company     String?
+  modelId     String?
+  createdAt   DateTime        @default(now())
+
+  gamesAsWhite Game[] @relation("GameWhiteParticipant")
+  gamesAsBlack Game[] @relation("GameBlackParticipant")
+
+  @@map("participants")
+}
+
+model Game {
+  id String @id @default(cuid())
+
+  whiteParticipantId String
+  whiteParticipant   Participant @relation("GameWhiteParticipant", fields: [whiteParticipantId], references: [id])
+  whiteDifficulty    Difficulty?
+
+  blackParticipantId String
+  blackParticipant   Participant @relation("GameBlackParticipant", fields: [blackParticipantId], references: [id])
+  blackDifficulty    Difficulty?
+
+  status GameStatus @default(configured)
+
+  // Posición oficial — el backend es la única autoridad (RNF-06).
+  fen  String
+  turn ChessColor @default(white)
+
+  result GameResult?
+  reason GameEndReason?
+
+  speed GameSpeed @default(normal)
+
+  moveCount Int @default(0)
+
+  lastMoveFrom String?
+  lastMoveTo   String?
+
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  moves      Move[]
+  aiAttempts AiAttempt[]
+  commentary Commentary[]
+
+  @@index([whiteParticipantId])
+  @@index([blackParticipantId])
+  @@index([status])
+  @@map("games")
+}
+
+// Movimiento confirmado por el motor de reglas. Un intento inválido NO genera
+// un Move (RN-06) — eso se registra en AiAttempt para el caso de la IA.
+model Move {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  ply   Int
+  color ChessColor
+  piece String
+  from  String
+  to    String
+  san   String
+
+  fenAfter String
+
+  latencyMs Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId])
+  @@map("moves")
+}
+
+// Trazabilidad de cada llamada a un proveedor de IA, incluyendo intentos
+// fallidos y reintentos (RF-32). rawResponse se trunca antes de guardar.
+model AiAttempt {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  ply        Int
+  provider   String
+  modelId    String
+  difficulty Difficulty
+
+  retryNumber Int              @default(0)
+  outcome     AiAttemptOutcome
+  rawResponse String?
+  parsedFrom  String?
+  parsedTo    String?
+
+  latencyMs Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId])
+  @@map("ai_attempts")
+}
+
+// Modo comentarista (RF-29/30) — no afecta posición, turno ni resultado (RN-12).
+model Commentary {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  ply      Int
+  provider String
+  text     String
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId])
+  @@map("commentary")
+}
+
+// Configuración no secreta (velocidades, timeouts, flags) — las claves de API
+// nunca viven aquí, solo en variables de entorno (RNF-08).
+model AppSetting {
+  key   String @id
+  value String
+
+  @@map("app_settings")
+}

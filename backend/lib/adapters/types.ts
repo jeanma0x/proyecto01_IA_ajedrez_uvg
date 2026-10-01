@@ -1,0 +1,52 @@
+export type Difficulty = "beginner" | "advanced" | "master";
+export type ChessColor = "white" | "black";
+
+export type AdapterErrorCode = "AUTH" | "RATE_LIMIT" | "TIMEOUT" | "UNAVAILABLE" | "INVALID_FORMAT";
+
+export class AdapterError extends Error {
+  code: AdapterErrorCode;
+
+  constructor(code: AdapterErrorCode, message: string) {
+    super(message);
+    this.name = "AdapterError";
+    this.code = code;
+  }
+}
+
+export interface MoveRequest {
+  fen: string;
+  color: ChessColor;
+  difficulty: Difficulty;
+  legalMovesSan: string[];
+  recentSanHistory: string[];
+  timeoutMs: number;
+}
+
+export interface MoveResponse {
+  from: string;
+  to: string;
+  promotion?: "q" | "r" | "b" | "n";
+  rawResponse: string;
+}
+
+export interface AiAdapter {
+  readonly provider: string;
+  readonly modelId: string;
+  requestMove(request: MoveRequest): Promise<MoveResponse>;
+}
+
+// Envuelve una promesa de proveedor con un timeout propio (independiente del
+// límite de la plataforma) — ver riesgo documentado en docs/04-MODELOS_PENDIENTE.md.
+export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new AdapterError("TIMEOUT", "El proveedor no respondió a tiempo.")), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
