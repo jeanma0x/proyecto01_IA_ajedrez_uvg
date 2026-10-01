@@ -120,20 +120,6 @@ app.post("/api/games", (request, response) => {
     );
   }
 
-  // No permitir que el mismo modelo de IA juegue contra sí mismo.
-  if (
-    whiteParticipant.type === "ai" &&
-    blackParticipant.type === "ai" &&
-    whiteParticipant.id === blackParticipant.id
-  ) {
-    return sendError(
-      response,
-      400,
-      "VALIDATION_ERROR",
-      "Los participantes IA deben utilizar modelos diferentes.",
-    );
-  }
-
   // Toda IA que juegue con blancas necesita dificultad.
   if (
     whiteParticipant.type === "ai" &&
@@ -157,6 +143,24 @@ app.post("/api/games", (request, response) => {
       400,
       "VALIDATION_ERROR",
       "El participante IA de negras requiere nivel de dificultad.",
+    );
+  }
+
+  // Permitimos que el mismo modelo se enfrente a sí mismo en niveles
+  // distintos (p. ej. Gemini Principiante vs. Gemini Maestro) — es parte
+  // de las combinaciones que el modo torneo necesita cubrir. Solo
+  // bloqueamos la partida si modelo Y nivel son idénticos en ambos bandos.
+  if (
+    whiteParticipant.type === "ai" &&
+    blackParticipant.type === "ai" &&
+    whiteParticipant.id === blackParticipant.id &&
+    body.whiteDifficulty === body.blackDifficulty
+  ) {
+    return sendError(
+      response,
+      400,
+      "VALIDATION_ERROR",
+      "Selecciona un modelo distinto o un nivel de dificultad distinto para cada bando.",
     );
   }
 

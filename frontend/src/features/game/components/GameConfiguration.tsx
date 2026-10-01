@@ -117,7 +117,8 @@ export function GameConfiguration({
   const sameAiSelected =
     whiteParticipant?.type === "ai" &&
     blackParticipant?.type === "ai" &&
-    whiteParticipant.id === blackParticipant.id;
+    whiteParticipant.id === blackParticipant.id &&
+    whiteDifficulty === blackDifficulty;
 
   const configurationIsValid =
     Boolean(whiteParticipant) &&
@@ -141,7 +142,7 @@ export function GameConfiguration({
 
     if (sameAiSelected) {
       setError(
-        "Selecciona modelos de IA diferentes para cada bando.",
+        "Selecciona un modelo distinto o un nivel de dificultad distinto para cada bando.",
       );
       return;
     }
@@ -385,8 +386,9 @@ export function GameConfiguration({
                 role="alert"
                 className="m-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800"
               >
-                Selecciona modelos de IA
-                diferentes para cada bando.
+                Selecciona un modelo distinto
+                o un nivel de dificultad
+                distinto para cada bando.
               </p>
             )}
 
