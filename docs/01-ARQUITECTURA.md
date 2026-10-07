@@ -15,7 +15,7 @@ Decisión confirmada el 25 de septiembre de 2026 — reemplaza la idea inicial d
 con SQLite. Ver `05-DECISIONES.md`.
 
 ```
-[ Navegador ] --HTTPS--> [ Backend en Vercel (autoridad) ] --API--> [ Google / Mistral / DeepSeek ]
+[ Navegador ] --HTTPS--> [ Backend en Vercel (autoridad) ] --API--> [ Google / Anthropic / OpenAI (Groq) ]
                                     |
                                     v
                            [ Neon (Postgres serverless) ]
@@ -63,8 +63,9 @@ nulabilidad, restricciones de unicidad/rango, enumeraciones).
 
 ## Contrato común de los adaptadores de IA
 
-Cada proveedor (Google, Mistral, DeepSeek/OpenRouter, o el que se apruebe) se integra detrás de la
-misma interfaz, para poder sustituir uno sin tocar el resto del sistema.
+Cada proveedor (Google, Anthropic, OpenAI/Groq, o el que se apruebe) se integra detrás de la
+misma interfaz, para poder sustituir uno sin tocar el resto del sistema — ver `04-MODELOS_PENDIENTE.md`
+para el historial de reemplazos (DeepSeek → Groq, Mistral → Anthropic) y por qué.
 
 - **Entrada:** `gameId`, FEN, color, movimientos legales (opcional), nivel, historial resumido, timeout.
 - **Salida válida:** objeto `{ from, to, promotion? }` — nunca texto libre sin parsear.

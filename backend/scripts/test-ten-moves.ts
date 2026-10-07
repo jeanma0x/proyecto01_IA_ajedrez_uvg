@@ -2,7 +2,7 @@
 // alternando colores, usando el adaptador real. Ver checklist en
 // docs/04-MODELOS_PENDIENTE.md. Uso: npx tsx scripts/test-ten-moves.ts
 import { GoogleAdapter } from "../lib/adapters/google";
-import { MistralAdapter } from "../lib/adapters/mistral";
+import { AnthropicAdapter } from "../lib/adapters/anthropic";
 import { GroqAdapter } from "../lib/adapters/groq";
 import { AdapterError } from "../lib/adapters/types";
 import type { AiAdapter } from "../lib/adapters/types";
@@ -21,12 +21,21 @@ async function runTenMoves(name: string, adapter: AiAdapter, moveCount = 10) {
   let rejectedDefinitive = 0;
   let transientRetries = 0;
 
+  // Mismo criterio que el backend real (app/api/games/[id]/ai-move/route.ts):
+  // una jugada ilegal/mal formada reintenta con el MISMO jugador y la misma
+  // posición hasta MAX_INVALID_RETRIES veces; un fallo de servicio
+  // (UNAVAILABLE) también reintenta, con una pausa. Si se agotan los
+  // reintentos sin éxito, la partida terminaría como incidencia — igual que
+  // en producción, no seguimos probando con un tablero desincronizado.
+  const MAX_INVALID_RETRIES = 2;
+
   for (let i = 1; i <= moveCount; i++) {
     const legalMovesSan = getLegalMovesSan(fen);
     let moveAccepted = false;
+    let invalidRetries = 0;
     let attempts = 0;
 
-    while (!moveAccepted && attempts < 5) {
+    while (!moveAccepted) {
       attempts += 1;
 
       try {
@@ -45,16 +54,27 @@ async function runTenMoves(name: string, adapter: AiAdapter, moveCount = 10) {
         accepted += 1;
         moveAccepted = true;
       } catch (error) {
-        if (error instanceof AdapterError && error.code === "UNAVAILABLE" && attempts < 5) {
+        if (error instanceof AdapterError && error.code === "UNAVAILABLE") {
           transientRetries += 1;
           console.log(`  #${i} (${color}): servicio no disponible (intento ${attempts}), reintentando en 5s...`);
           await sleep(5000);
           continue;
         }
 
+        if (invalidRetries < MAX_INVALID_RETRIES) {
+          invalidRetries += 1;
+          console.log(
+            `  #${i} (${color}): jugada inválida (reintento ${invalidRetries}/${MAX_INVALID_RETRIES}): ${String(error)}`,
+          );
+          continue;
+        }
+
         rejectedDefinitive += 1;
-        console.log(`  #${i} (${color}): FALLÓ definitivamente tras ${attempts} intento(s): ${String(error)}`);
-        moveAccepted = true;
+        console.log(
+          `  #${i} (${color}): FALLÓ definitivamente tras agotar reintentos: ${String(error)} — se habría marcado como incidencia técnica`,
+        );
+        console.log(`  Resumen: ${accepted}/${moveCount} aceptados, ${rejectedDefinitive} fallo(s) definitivo(s), ${transientRetries} reintentos por servicio no disponible.`);
+        return;
       }
     }
 
@@ -79,8 +99,8 @@ async function main() {
     await runTenMoves("Google Gemini", new GoogleAdapter(process.env.GEMINI_API_KEY));
   }
 
-  if (process.env.MISTRAL_API_KEY) {
-    await runTenMoves("Mistral AI", new MistralAdapter(process.env.MISTRAL_API_KEY));
+  if (process.env.ANTHROPIC_API_KEY) {
+    await runTenMoves("Anthropic", new AnthropicAdapter(process.env.ANTHROPIC_API_KEY));
   }
 
   if (process.env.GROQ_API_KEY) {

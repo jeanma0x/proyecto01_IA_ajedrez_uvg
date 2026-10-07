@@ -80,17 +80,38 @@ APIs de pago"). Fue una decisión consciente del equipo, tomada después de agot
 si el docente pregunta por esto, explicarlo así en vez de presentarlo como "modelo gratuito". Ver
 `05-DECISIONES.md` (fila 2026-10-09) para el registro formal de la decisión.
 
-**Mistral sigue bloqueado** en la consola ("Mistral Studio" pide "Upgrade" para generar una key) —
-pendiente de la misma decisión (activar su plan "Scale" con $5 de saldo) o de encontrar la vía
-gratuita ("Experiment" en Billing) antes de la presentación.
+## Actualización — 2026-10-09: Mistral reemplazado por Anthropic (Claude Haiku)
 
-**Estado consolidado de los 3 modelos:**
+Al intentar activar el plan "Scale" de Mistral para destrabar la generación de API key, su consola
+exige un **mínimo de $10** de saldo prepago (no $5 como en Gemini) — fuera del presupuesto que el
+equipo definió para esto. En vez de duplicar el gasto, se reemplazó Mistral por un tercer
+candidato: **Anthropic (Claude Haiku 4.5)**, cuya consola sí permite exactamente **$5** de crédito
+mínimo.
 
-| Modelo | Estado | Vía |
-| --- | --- | --- |
-| OpenAI `gpt-oss-120b` vía Groq | ✅ Confirmado (gratis) | Tier gratuito de Groq |
-| Google Gemini (`gemini-3.8-flash`) | ✅ Confirmado (de pago) | $5 prepago + créditos promocionales |
-| Mistral AI (`mistral-small-latest`) | ❌ Bloqueado | Pendiente: Billing → "Experiment" (gratis) o "Scale" (pago) |
+**Nota de transparencia, importante:** Claude Code (la IA que construyó este backend durante toda
+la sesión) es un producto de **Anthropic** — la misma empresa que ahora se eligió como uno de los 3
+competidores. Esto se le señaló explícitamente al equipo antes de decidir, para que la elección no
+pareciera un sesgo automático de la herramienta hacia su propio fabricante. La decisión final fue
+del equipo, basada en el dato objetivo de que Anthropic era la única alternativa de pago que
+calzaba con el presupuesto de $5 ya establecido — no en una recomendación espontánea de Claude. Si
+el docente pregunta por esto, explicarlo así: fue una decisión informada y declarada, no ocultada.
+
+Prueba real de 10 movimientos con `claude-haiku-4-5-20251001`: **10/10 movimientos legales, 0
+fallos, 0 reintentos** (partida: 1.e4 c5 2.e5 Nf6 3.e6 c4 4.exd7+ Nfxd7 5.d4 Nc6).
+
+*Nota técnica sobre esta prueba:* el primer intento (antes de este ajuste) dio 8/10 porque el script
+de prueba tenía un bug — no reintentaba con el mismo jugador tras una jugada ilegal (solo el backend
+real en producción ya hacía esto bien). Se corrigió `backend/scripts/test-ten-moves.ts` para igualar
+el comportamiento real de reintentos antes de repetir la prueba.
+
+**Estado consolidado de los 3 modelos (final):**
+
+| Modelo | Estado | Vía | Costo |
+| --- | --- | --- | --- |
+| OpenAI `gpt-oss-120b` vía Groq | ✅ Confirmado (10/10) | Tier gratuito de Groq | $0 |
+| Google Gemini (`gemini-3.8-flash`) | ✅ Confirmado (10/10) | Plan de pago | $5 prepago + créditos promocionales |
+| Anthropic (`claude-haiku-4-5-20251001`) | ✅ Confirmado (10/10) | Plan de pago | $5 prepago |
+| ~~Mistral AI~~ | ❌ Descartado | — | Mínimo de pago ($10) fuera de presupuesto |
 
 ## Candidatos propuestos (histórico — ver tabla de investigación arriba para el estado vigente)
 
@@ -152,10 +173,10 @@ resolverla con el docente antes de depender de esa opción.
 
 ## Checklist de esta decisión
 - [x] Prueba de conexión + 10 movimientos legales ejecutada para Google/Gemini — 10/10 el 2026-10-09, tras activar plan de pago
-- [ ] Prueba de conexión + 10 movimientos legales ejecutada para Mistral AI — bloqueado en consola, ver arriba
+- [x] Prueba de conexión + 10 movimientos legales ejecutada para Anthropic (reemplazo de Mistral) — 10/10 el 2026-10-09
 - [x] Prueba de conexión + 10 movimientos legales ejecutada para OpenAI `gpt-oss` vía Groq — 10/10 el 2026-10-01
-- [x] Confirmado que las tres empresas creadoras son distintas entre sí (Google, Mistral AI, OpenAI)
-- [x] Condición gratuita de cada una documentada con fecha de verificación — Gemini ya no es gratuita, ver nota de cumplimiento arriba
-- [x] Alternativa de respaldo identificada para al menos un modelo (Groq ya es el respaldo usado de DeepSeek)
+- [x] Confirmado que las tres empresas creadoras son distintas entre sí (Google, Anthropic, OpenAI)
+- [x] Condición gratuita de cada una documentada con fecha de verificación — solo Groq es gratis; Gemini y Anthropic son de pago (ver nota de cumplimiento)
+- [x] Alternativa de respaldo identificada para al menos un modelo (Groq ya es el respaldo usado de DeepSeek; Anthropic es el respaldo usado de Mistral)
 - [ ] Parámetros de los 3 niveles de dificultad definidos y probados por modelo
-- [ ] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — Gemini y Groq ya `Confirmada`; falta cerrar Mistral
+- [x] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — los 3 modelos `Confirmada` desde 2026-10-09

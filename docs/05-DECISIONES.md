@@ -25,18 +25,19 @@ falta aprobar) · `Pendiente` (aún sin definir) · `Descartada` (se evaluó y n
 | 2026-09-25 | Modelos: Google Gemini + Mistral `mistral-small-latest` + OpenAI `gpt-oss-120b` vía Groq (reemplaza a DeepSeek) | Propuesta | Claude Code (investigación web) | DeepSeek dejó de tener modelos gratuitos en OpenRouter desde julio 2026 (confirmado por búsqueda web). El reemplazo usa la empresa creadora (OpenAI) como "tercera empresa", resolviendo la ambigüedad Groq-vs-Meta. Ver detalle y fuentes en `04-MODELOS_PENDIENTE.md` |
 | 2026-10-01 | OpenAI `gpt-oss-120b` vía Groq | Confirmada | Jean Marco | Prueba real de 10 movimientos legales consecutivos: 10/10 con claves reales. Primer modelo production-ready del proyecto. Ver evidencia en `04-MODELOS_PENDIENTE.md` |
 | 2026-10-09 | Google Gemini (`gemini-3.8-flash`) — pasa a plan de pago ($5 prepago) | Confirmada | Jean Marco | La cuota gratuita era demasiado agresiva para uso confiable (ver fila 2026-10-01). Se activó facturación en Google AI Studio con $5 de crédito prepago. Prueba real de 10 movimientos legales consecutivos tras el pago: 10/10, 0 fallos, 0 reintentos. Nota de cumplimiento: esto convierte a Gemini en un modelo de pago, lo cual contradice RNF-16 y el alcance del proyecto (ver `00-CONTEXTO_PROYECTO.md`) — decisión tomada conscientemente por el equipo, documentarla así ante el docente si se pregunta |
-| 2026-10-01 | Mistral AI — generación de API key | Pendiente | Jean Marco | La consola ("Mistral Studio") pide "Upgrade" para generar una key, incluso en el plan gratuito. Podría ser solo activar el plan "Experiment" (gratis) en Billing, no necesariamente un plan de pago — falta revisarlo. Si sigue bloqueado, hace falta una cuarta empresa de respaldo. Ver `04-MODELOS_PENDIENTE.md` |
+| 2026-10-01 | Mistral AI — generación de API key | Descartada | Jean Marco | La consola ("Mistral Studio") pedía "Upgrade" para generar una key incluso en el plan gratuito. Reemplazada — ver fila 2026-10-09 |
+| 2026-10-09 | Mistral AI reemplazado por Anthropic (`claude-haiku-4-5-20251001`) como tercer modelo | Confirmada | Jean Marco (decisión), Claude Code (implementación) | El plan de pago de Mistral exige un mínimo de $10 — fuera del presupuesto de $5/modelo ya definido. Anthropic sí permite exactamente $5. **Nota de transparencia:** Anthropic es la empresa creadora de Claude Code, la IA que construyó este backend — se le señaló explícitamente este conflicto de interés al equipo antes de decidir, y la elección se basó en el dato objetivo del monto mínimo, no en una recomendación espontánea de la IA. Prueba real de 10 movimientos: 10/10, 0 fallos. Ver `04-MODELOS_PENDIENTE.md` |
 | 2026-10-07 | Backend y frontend desplegados en Vercel (`duelo-inteligencias-backend.vercel.app` y `duelo-inteligencias-frontend.vercel.app`), conectados entre sí y al Neon compartido | Confirmada | Jean Marco | Despliegue manual vía Vercel CLI inicialmente. Probado end-to-end en producción: carga del frontend, CORS entre ambos dominios, crear partida, movimiento humano, turno de IA (Groq). Cualquiera del equipo puede abrir el frontend desplegado y jugar contra datos reales sin instalar nada local — ver `backend/README.md` |
 | 2026-10-07 | Auto-deploy en push a `develop`: activado solo para el proyecto **frontend**, backend sigue manual | Confirmada | Jean Marco | Frontend es de bajo riesgo (sin migraciones, sin secretos) — cada push a `develop` despliega solo a producción, Gabriel/Julián ven sus cambios sin esperar a que alguien corra `vercel --prod`. Backend se mantiene manual a propósito: un error de migración o de configuración ahí sí podría tumbar lo que el equipo está usando, así que sigue requiriendo aviso antes de desplegar |
 
 ## Pendientes de alto nivel para la reunión del equipo
 
-1. Validar en firme Gemini y Mistral (`gpt-oss` vía Groq ya quedó confirmado el 2026-10-01, 10/10
-   movimientos reales). Gemini necesita repetir la prueba con más espaciamiento; Mistral necesita
-   desbloquear la generación de API key en su consola. (Trabajo de Jean Marco dentro de Frente 2, no
-   requiere reunión de equipo.)
-2. Aprobar la funcionalidad adicional definitiva (una sola, con dueño claro de su implementación).
-3. Elegir herramienta de gestión de tareas (Jira / Azure Boards / otra).
+~~Validar en firme los 3 modelos~~ — **Confirmado el 2026-10-09**: OpenAI `gpt-oss` vía Groq (gratis),
+Google Gemini (pago, $5) y Anthropic Claude Haiku (pago, $5) — los 3 con prueba real de 10/10
+movimientos. Ver `04-MODELOS_PENDIENTE.md`.
+
+1. Aprobar la funcionalidad adicional definitiva (una sola, con dueño claro de su implementación).
+2. Elegir herramienta de gestión de tareas (Jira / Azure Boards / otra).
 
 ~~Asignar responsables por frente~~ — **Confirmado el 2026-09-25**, ver tabla arriba y
 `03-FRENTES_CHECKLIST.md`.

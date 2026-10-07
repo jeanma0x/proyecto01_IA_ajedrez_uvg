@@ -18,11 +18,11 @@ const participants = [
     modelId: "gemini-3.8-flash",
   },
   {
-    id: "mistral-small",
+    id: "claude-haiku",
     type: "ai" as const,
-    displayName: "Mistral Small",
-    company: "Mistral AI",
-    modelId: "mistral-small-latest",
+    displayName: "Claude Haiku 4.5",
+    company: "Anthropic",
+    modelId: "claude-haiku-4-5-20251001",
   },
   {
     id: "gpt-oss-120b",

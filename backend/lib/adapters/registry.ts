@@ -1,11 +1,11 @@
 import { GoogleAdapter } from "./google";
-import { MistralAdapter } from "./mistral";
+import { AnthropicAdapter } from "./anthropic";
 import { GroqAdapter } from "./groq";
 import { AdapterError } from "./types";
 import type { AiAdapter } from "./types";
 
 let googleAdapter: AiAdapter | null = null;
-let mistralAdapter: AiAdapter | null = null;
+let anthropicAdapter: AiAdapter | null = null;
 let groqAdapter: AiAdapter | null = null;
 
 // Participant.id (ver prisma/seed.ts) -> instancia de adaptador. Centralizar
@@ -18,9 +18,9 @@ export function getAdapterForParticipantId(participantId: string): AiAdapter {
       return googleAdapter;
     }
 
-    case "mistral-small": {
-      mistralAdapter ??= new MistralAdapter(requireEnv("MISTRAL_API_KEY"));
-      return mistralAdapter;
+    case "claude-haiku": {
+      anthropicAdapter ??= new AnthropicAdapter(requireEnv("ANTHROPIC_API_KEY"));
+      return anthropicAdapter;
     }
 
     case "gpt-oss-120b": {

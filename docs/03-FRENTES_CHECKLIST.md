@@ -34,7 +34,7 @@ no solo el propio.
 
 - [ ] Adaptador con interfaz común para los 3 proveedores (RNF-10) — ver contrato en `01-ARQUITECTURA.md`
 - [ ] Integración funcional con el modelo de Google (HU-08 en el doc de backlog original)
-- [ ] Integración funcional con el modelo de Mistral AI
+- [x] Integración funcional con el modelo de Anthropic (reemplaza a Mistral AI, ver `04-MODELOS_PENDIENTE.md`)
 - [ ] Integración funcional con el modelo de DeepSeek (vía OpenRouter u otro acceso)
 - [ ] Envío de FEN, color, historial resumido y nivel en cada solicitud (RF-13)
 - [ ] Parseo y validación estricta de la respuesta antes de aceptarla (RF-14)
