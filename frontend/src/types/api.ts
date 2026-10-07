@@ -124,3 +124,16 @@ export interface LegalMovesResponse {
   from: string;
   targets: string[];
 }
+
+export interface AiCommentaryRequest {
+  fen: string;
+  moveNumber: number;
+  lastMove: {
+    from: string;
+    to: string;
+  };
+}
+
+export interface AiCommentaryResponse {
+  commentary: string;
+}

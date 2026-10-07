@@ -5,6 +5,7 @@ import { GameConfiguration } from "./features/game/components/GameConfiguration"
 import { GameControls } from "./features/game/components/GameControls";
 import { GameResult } from "./features/game/components/GameResult";
 import { MoveHistory } from "./features/game/components/MoveHistory";
+import { AiCommentator } from "./features/game/components/AiCommentator";
 
 import type { GameState } from "./types/api";
 
@@ -40,6 +41,8 @@ function App() {
 
         {game && (
           <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(480px,650px)_minmax(320px,1fr)] lg:gap-8">
+            
+            {/* TABLERO */}
             <div className="mx-auto w-full max-w-[650px] lg:mx-0">
               <ChessBoard
                 game={game}
@@ -47,25 +50,35 @@ function App() {
               />
             </div>
 
+            {/* PANEL DERECHO */}
             <aside
               className="flex min-w-0 flex-col gap-3.5"
               aria-label="Información y controles de la partida"
             >
+              {/* Controles */}
               <GameControls
                 game={game}
                 onGameChange={setGame}
               />
 
+              {/* NUEVO: Comentarista IA */}
+              <AiCommentator
+                game={game}
+              />
+
+              {/* Historial de movimientos */}
               <MoveHistory
                 gameId={game.id}
                 moveCount={game.moveCount}
               />
 
+              {/* Resultado */}
               <GameResult
                 game={game}
                 onNewGame={handleNewGame}
               />
 
+              {/* Nueva partida */}
               {game.status !== "finished" &&
                 game.status !== "incident" && (
                   <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
