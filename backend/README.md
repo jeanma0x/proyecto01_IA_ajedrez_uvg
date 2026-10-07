@@ -24,6 +24,30 @@ en `../docs/05-DECISIONES.md` (2026-10-01).
 4. Levantar el servidor: `npm run dev` (por defecto en `http://localhost:3001` si el frontend ya
    usa el 3000/5173 — ajustar con `-- -p 3001` si hace falta).
 
+## Backend desplegado (para el equipo)
+
+Ya está desplegado en Vercel, conectado al Neon compartido del proyecto — no hace falta correrlo
+local para probar el frontend contra datos reales:
+
+```
+https://duelo-inteligencias-backend.vercel.app
+```
+
+Para que tu frontend local lo use, en `frontend/.env.local`:
+
+```
+VITE_API_BASE_URL=https://duelo-inteligencias-backend.vercel.app/api
+```
+
+Notas:
+- CORS solo permite `http://localhost:5173` por ahora (el puerto por defecto de Vite). Si corres el
+  frontend en otro puerto, avisa a Jean Marco para agregarlo a `FRONTEND_ORIGINS` en Vercel.
+- `MISTRAL_API_KEY` todavía no está configurada (ver `../docs/04-MODELOS_PENDIENTE.md`) — elegir
+  Mistral como rival IA fallará hasta que se resuelva.
+- Cada `git push` a `develop`/ramas de feature **no** redespliega automáticamente todavía — los
+  despliegues a este dominio se hacen manualmente con `vercel --prod` desde `backend/`. Si necesitas
+  una versión nueva ahí, pide que se redespliegue.
+
 ## Contrato con el frontend
 
 Implementa exactamente los mismos endpoints y formas de respuesta que
