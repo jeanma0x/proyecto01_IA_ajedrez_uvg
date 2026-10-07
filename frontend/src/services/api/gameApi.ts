@@ -1,6 +1,8 @@
 import { apiRequest } from "./apiClient";
 
 import type {
+  AiCommentaryRequest,
+  AiCommentaryResponse,
   CreateGameRequest,
   GameControlRequest,
   GameState,
@@ -80,6 +82,23 @@ export function controlGame(
     `/games/${gameId}/control`,
     {
       method: "PATCH",
+      body: JSON.stringify(data),
+    },
+  );
+}
+
+/*
+ * Solicita al backend un comentario generado por IA
+ * sobre el último movimiento realizado.
+ */
+export function requestAiCommentary(
+  gameId: string,
+  data: AiCommentaryRequest,
+): Promise<AiCommentaryResponse> {
+  return apiRequest<AiCommentaryResponse>(
+    `/games/${gameId}/commentary`,
+    {
+      method: "POST",
       body: JSON.stringify(data),
     },
   );
