@@ -1,4 +1,9 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Chessboard } from "react-chessboard";
 
 import type {
@@ -11,14 +16,24 @@ import { ApiClientError } from "../../services/api/apiClient";
 import {
   getLegalMoves,
   makeMove,
+  requestAiMove,
 } from "../../services/api/gameApi";
 
-import type { GameState } from "../../types/api";
+import type { GameSpeed, GameState } from "../../types/api";
 
 interface ChessBoardProps {
   game: GameState;
   onGameChange: (game: GameState) => void;
 }
+
+// RF-19/20: la velocidad solo cambia el ritmo entre jugadas de IA, nunca
+// oculta movimientos ni altera su orden (ver lib/game/move-service.ts en el
+// backend, que sigue aplicando un movimiento a la vez).
+const AI_MOVE_DELAY_MS: Record<GameSpeed, number> = {
+  normal: 1200,
+  fast: 400,
+  maximum: 0,
+};
 
 export function ChessBoard({
   game,
@@ -34,6 +49,25 @@ export function ChessBoard({
 
   const [legalTargets, setLegalTargets] =
     useState<string[]>([]);
+
+  const [aiError, setAiError] =
+    useState<string | null>(null);
+
+  const [
+    isRequestingAiMove,
+    setIsRequestingAiMove,
+  ] = useState(false);
+
+  const aiRequestInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const whiteIsHuman =
     game.white.participant.type === "human";
@@ -55,6 +89,67 @@ export function ChessBoard({
     game.status === "active" &&
     currentTurnIsHuman &&
     !isSubmittingMove;
+
+  const requestAiTurn = useCallback(() => {
+    if (aiRequestInFlightRef.current) {
+      return;
+    }
+
+    aiRequestInFlightRef.current = true;
+    setIsRequestingAiMove(true);
+    setAiError(null);
+
+    void requestAiMove(game.id)
+      .then((updatedGame) => {
+        if (mountedRef.current) {
+          onGameChange(updatedGame);
+        }
+      })
+      .catch((caughtError: unknown) => {
+        if (!mountedRef.current) {
+          return;
+        }
+
+        if (caughtError instanceof ApiClientError) {
+          setAiError(caughtError.message);
+        } else {
+          setAiError(
+            "No fue posible obtener el movimiento de la IA.",
+          );
+        }
+      })
+      .finally(() => {
+        aiRequestInFlightRef.current = false;
+
+        if (mountedRef.current) {
+          setIsRequestingAiMove(false);
+        }
+      });
+  }, [game.id, onGameChange]);
+
+  // Dispara automáticamente el turno de la IA (RF-13): sin esto, una
+  // partida con IA nunca avanza por sí sola. Se reprograma solo cuando
+  // cambia el turno/estado/velocidad — pausar limpia el timer pendiente.
+  useEffect(() => {
+    if (game.status !== "active" || currentTurnIsHuman) {
+      return;
+    }
+
+    const timer = setTimeout(
+      requestAiTurn,
+      AI_MOVE_DELAY_MS[game.speed],
+    );
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [
+    game.status,
+    game.turn,
+    game.speed,
+    currentTurnIsHuman,
+    requestAiTurn,
+  ]);
 
   function handlePieceDrag({
     square,
@@ -206,9 +301,12 @@ export function ChessBoard({
         </div>
 
         {game.status === "active" &&
-          !currentTurnIsHuman && (
+          !currentTurnIsHuman &&
+          !aiError && (
             <p className="mt-3 mb-0 text-slate-600">
-              Esperando movimiento de la IA...
+              {isRequestingAiMove
+                ? "La IA está pensando..."
+                : "Esperando movimiento de la IA..."}
             </p>
           )}
 
@@ -225,6 +323,23 @@ export function ChessBoard({
           >
             {error}
           </p>
+        )}
+
+        {aiError && (
+          <div
+            role="alert"
+            className="mt-3 flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800"
+          >
+            <span>{aiError}</span>
+
+            <button
+              type="button"
+              className="min-h-9 self-start rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-semibold text-red-800 transition hover:bg-red-100 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              onClick={requestAiTurn}
+            >
+              Reintentar
+            </button>
+          </div>
         )}
       </div>
     </section>

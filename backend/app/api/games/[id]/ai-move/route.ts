@@ -39,7 +39,19 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       throw new ApiError("AI_NOT_CONFIGURED", "El participante IA no tiene nivel de dificultad configurado.");
     }
 
-    const adapter = getAdapterForParticipantId(participant.id);
+    let adapter: ReturnType<typeof getAdapterForParticipantId>;
+
+    try {
+      adapter = getAdapterForParticipantId(participant.id);
+    } catch {
+      // No exponer el nombre de la variable de entorno faltante al
+      // frontend (RF-31) — solo un mensaje genérico y accionable.
+      throw new ApiError(
+        "AI_NOT_CONFIGURED",
+        "Este modelo de IA no está disponible todavía. Elige otro rival o inténtalo más tarde.",
+      );
+    }
+
     const legalMovesSan = getLegalMovesSan(game.fen);
 
     const recentSanHistory = (

@@ -63,10 +63,34 @@ proveedores):
    se quedan sin tokens, el proveedor rechaza la respuesta ("model did not call a tool"). Se subieron
    los límites a 600/900/1200 según nivel.
 
-**Conclusión parcial:** con Groq confirmado al 100%, el proyecto **ya tiene al menos un modelo
-production-ready**. Gemini necesita una prueba más paciente (hay evidencia de que funciona, solo falta
-confirmar que la cuota diaria alcanza para una partida real sin ráfagas de pruebas). Mistral sigue
-bloqueado en la consola — revisar Billing antes de la próxima sesión.
+## Actualización — 2026-10-09: Gemini pasa a plan de pago
+
+La cuota gratuita de Gemini resultó demasiado agresiva para uso confiable (ver prueba del
+2026-10-01 arriba: 1/10, cuota agotada en minutos). El equipo decidió activar facturación en
+Google AI Studio con **$5 de crédito prepago** (más créditos promocionales gratuitos de Google
+Cloud reclamados aparte, sin costo adicional).
+
+Repetida la prueba real de 10 movimientos tras activar el pago: **10/10 movimientos legales, 0
+fallos, 0 reintentos** — muy por encima del resultado con cuota gratuita.
+
+⚠️ **Nota de cumplimiento, importante:** esto convierte a Gemini en un modelo de **pago**, lo cual
+contradice RNF-16 ("configuración por defecto usa cuotas gratuitas; no habilita facturación sola")
+y el alcance del proyecto en `00-CONTEXTO_PROYECTO.md` ("fuera de alcance: consumo deliberado de
+APIs de pago"). Fue una decisión consciente del equipo, tomada después de agotar la ruta gratuita —
+si el docente pregunta por esto, explicarlo así en vez de presentarlo como "modelo gratuito". Ver
+`05-DECISIONES.md` (fila 2026-10-09) para el registro formal de la decisión.
+
+**Mistral sigue bloqueado** en la consola ("Mistral Studio" pide "Upgrade" para generar una key) —
+pendiente de la misma decisión (activar su plan "Scale" con $5 de saldo) o de encontrar la vía
+gratuita ("Experiment" en Billing) antes de la presentación.
+
+**Estado consolidado de los 3 modelos:**
+
+| Modelo | Estado | Vía |
+| --- | --- | --- |
+| OpenAI `gpt-oss-120b` vía Groq | ✅ Confirmado (gratis) | Tier gratuito de Groq |
+| Google Gemini (`gemini-3.8-flash`) | ✅ Confirmado (de pago) | $5 prepago + créditos promocionales |
+| Mistral AI (`mistral-small-latest`) | ❌ Bloqueado | Pendiente: Billing → "Experiment" (gratis) o "Scale" (pago) |
 
 ## Candidatos propuestos (histórico — ver tabla de investigación arriba para el estado vigente)
 
@@ -127,11 +151,11 @@ modelo Llama (Meta) también vía Groq — ahí sí persistiría la duda Groq-vs
 resolverla con el docente antes de depender de esa opción.
 
 ## Checklist de esta decisión
-- [ ] Prueba de conexión + 10 movimientos legales ejecutada para Google/Gemini — 1/10 el 2026-10-01, repetir con más espaciamiento
+- [x] Prueba de conexión + 10 movimientos legales ejecutada para Google/Gemini — 10/10 el 2026-10-09, tras activar plan de pago
 - [ ] Prueba de conexión + 10 movimientos legales ejecutada para Mistral AI — bloqueado en consola, ver arriba
 - [x] Prueba de conexión + 10 movimientos legales ejecutada para OpenAI `gpt-oss` vía Groq — 10/10 el 2026-10-01
 - [x] Confirmado que las tres empresas creadoras son distintas entre sí (Google, Mistral AI, OpenAI)
-- [x] Condición gratuita de cada una documentada con fecha de verificación
+- [x] Condición gratuita de cada una documentada con fecha de verificación — Gemini ya no es gratuita, ver nota de cumplimiento arriba
 - [x] Alternativa de respaldo identificada para al menos un modelo (Groq ya es el respaldo usado de DeepSeek)
 - [ ] Parámetros de los 3 niveles de dificultad definidos y probados por modelo
-- [ ] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — queda `Propuesta` hasta cerrar Gemini y Mistral
+- [ ] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — Gemini y Groq ya `Confirmada`; falta cerrar Mistral
