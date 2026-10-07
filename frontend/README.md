@@ -10,8 +10,12 @@ Tablero y experiencia visual (Frente 1). Ver `mock-api/` para la API de desarrol
 - Desarrollo local sigue funcionando igual con `npm run dev` + la `mock-api` (puerto 3000) o, si
   quieres probar contra datos reales, con `VITE_API_BASE_URL=https://duelo-inteligencias-backend.vercel.app/api`
   en tu `.env.local` — ver `../backend/README.md`.
-- Despliegues a este dominio son manuales (`vercel --prod` desde `frontend/`), no automáticos en
-  cada push todavía.
+- **Auto-deploy activado (2026-10-07):** cada push a `develop` despliega automáticamente a
+  producción (`duelo-inteligencias-frontend.vercel.app`) — no hace falta avisar ni esperar a que
+  alguien corra `vercel --prod`. Toma ~15-30s en reflejarse.
+  El **backend** (`../backend/`) sigue siendo manual a propósito (si falla una migración o una key,
+  no queremos que tumbe lo que el equipo está usando) — para cambios de backend, sigue avisando antes
+  de esperar verlos reflejados.
 
 ---
 
