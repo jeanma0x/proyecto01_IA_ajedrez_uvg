@@ -11,7 +11,12 @@ import { commitMove, currentTurnParticipant, loadActiveGame, markAsIncident } fr
 import { ApiError, handleRouteError } from "@/lib/http/errors";
 
 const MAX_RETRIES_ON_INVALID_MOVE = 2;
-const AI_REQUEST_TIMEOUT_MS = 9_000;
+// Evidencia real (2026-10-09): jugadas exitosas de Gemini tardaron hasta
+// 8.6s; con un límite de 9s, un solo pico de latencia normal terminaba la
+// partida entera como incidencia sin dar chance de reintentar. Vercel Pro
+// (Fluid Compute) soporta cientos de segundos, así que hay margen de sobra
+// para subir este límite sin arriesgar el timeout de la plataforma.
+const AI_REQUEST_TIMEOUT_MS = 20_000;
 const RECENT_HISTORY_SIZE = 10;
 
 const ADAPTER_ERROR_TO_OUTCOME: Record<AdapterErrorCode, AiAttemptOutcome> = {
