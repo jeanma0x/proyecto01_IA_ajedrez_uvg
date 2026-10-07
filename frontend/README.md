@@ -1,3 +1,20 @@
+# Frontend — Duelo de Inteligencias
+
+Tablero y experiencia visual (Frente 1). Ver `mock-api/` para la API de desarrollo aislado y
+`../backend/` para el backend real.
+
+## Desplegado
+
+- **Producción:** https://duelo-inteligencias-frontend.vercel.app — ya conectado al backend real
+  (`VITE_API_BASE_URL` configurada en Vercel, apunta a `duelo-inteligencias-backend.vercel.app/api`).
+- Desarrollo local sigue funcionando igual con `npm run dev` + la `mock-api` (puerto 3000) o, si
+  quieres probar contra datos reales, con `VITE_API_BASE_URL=https://duelo-inteligencias-backend.vercel.app/api`
+  en tu `.env.local` — ver `../backend/README.md`.
+- Despliegues a este dominio son manuales (`vercel --prod` desde `frontend/`), no automáticos en
+  cada push todavía.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
