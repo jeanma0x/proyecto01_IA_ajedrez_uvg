@@ -37,8 +37,30 @@ export function AiCommentator({
   const [isSpeaking, setIsSpeaking] =
     useState(false);
 
-  const [speakingCommentId, setSpeakingCommentId] =
-    useState<number | null>(null);
+  const [
+    speakingCommentId,
+    setSpeakingCommentId,
+  ] = useState<number | null>(null);
+
+  /*
+   * Voces disponibles en el navegador.
+   */
+  const [voices, setVoices] = useState<
+    SpeechSynthesisVoice[]
+  >([]);
+
+  /*
+   * Nombre de la voz seleccionada.
+   */
+  const [selectedVoice, setSelectedVoice] =
+    useState("");
+
+  /*
+   * 1.15 produce una narración un poco más
+   * dinámica que la velocidad estándar.
+   */
+  const [speechRate, setSpeechRate] =
+    useState(1.15);
 
   const previousMoveCount = useRef(
     game.moveCount,
@@ -57,12 +79,78 @@ export function AiCommentator({
   }, []);
 
   /*
+   * Carga las voces disponibles del navegador.
+   *
+   * Algunos navegadores no las tienen listas
+   * inmediatamente, por eso escuchamos
+   * "voiceschanged".
+   */
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) {
+      return;
+    }
+
+    function loadVoices() {
+      const availableVoices =
+        window.speechSynthesis.getVoices();
+
+      setVoices(availableVoices);
+
+      if (
+        availableVoices.length > 0 &&
+        !selectedVoice
+      ) {
+        const spanishVoices =
+          availableVoices.filter((voice) =>
+            voice.lang
+              .toLowerCase()
+              .startsWith("es"),
+          );
+
+        /*
+         * Intentamos encontrar primero voces
+         * que normalmente suenan más naturales.
+         */
+        const preferredVoice =
+          spanishVoices.find((voice) =>
+            /natural|neural|google|microsoft/i.test(
+              voice.name,
+            ),
+          ) ??
+          spanishVoices[0] ??
+          availableVoices[0];
+
+        if (preferredVoice) {
+          setSelectedVoice(
+            preferredVoice.name,
+          );
+        }
+      }
+    }
+
+    loadVoices();
+
+    window.speechSynthesis.addEventListener(
+      "voiceschanged",
+      loadVoices,
+    );
+
+    return () => {
+      window.speechSynthesis.removeEventListener(
+        "voiceschanged",
+        loadVoices,
+      );
+    };
+  }, [selectedVoice]);
+
+  /*
    * Detecta cuando se realizó un nuevo
    * movimiento.
    */
   useEffect(() => {
     if (
-      game.moveCount <= previousMoveCount.current
+      game.moveCount <=
+      previousMoveCount.current
     ) {
       previousMoveCount.current =
         game.moveCount;
@@ -87,8 +175,11 @@ export function AiCommentator({
 
     /*
      * Después de realizar un movimiento,
-     * game.turn ya pertenece al siguiente
+     * game.turn pertenece al siguiente
      * jugador.
+     *
+     * Si ahora juegan negras, quien acaba
+     * de mover fueron las blancas.
      */
     const player =
       game.turn === "black"
@@ -104,6 +195,10 @@ export function AiCommentator({
     let generatedByAi = false;
 
     try {
+      /*
+       * Intentamos obtener el comentario
+       * desde el endpoint de IA.
+       */
       const response =
         await requestAiCommentary(game.id, {
           fen: game.fen,
@@ -118,8 +213,9 @@ export function AiCommentator({
       generatedByAi = true;
     } catch {
       /*
-       * Si el endpoint de IA todavía no existe
-       * o falla, usamos el comentario local.
+       * Mientras el endpoint de IA no exista
+       * o si falla, utilizamos un comentario
+       * generado localmente.
        */
       message = generateFallbackComment(
         game,
@@ -138,6 +234,10 @@ export function AiCommentator({
       generatedByAi,
     };
 
+    /*
+     * Guardamos solamente los últimos
+     * cinco comentarios.
+     */
     setComments((current) =>
       [newComment, ...current].slice(0, 5),
     );
@@ -145,9 +245,9 @@ export function AiCommentator({
     /*
      * Narración automática.
      *
-     * En velocidad máxima la desactivamos
-     * para evitar que los comentarios se
-     * acumulen mientras las IAs juegan.
+     * En velocidad máxima no reproducimos
+     * automáticamente para evitar que las
+     * voces se corten constantemente.
      */
     if (
       voiceEnabled &&
@@ -160,6 +260,10 @@ export function AiCommentator({
     }
   }
 
+  /*
+   * Reproduce un comentario utilizando
+   * Web Speech API.
+   */
   function speakCommentary(
     text: string,
     commentId?: number,
@@ -169,27 +273,41 @@ export function AiCommentator({
     }
 
     /*
-     * Detiene cualquier comentario anterior.
+     * Detenemos cualquier comentario
+     * que estuviera reproduciéndose.
      */
     window.speechSynthesis.cancel();
 
     const utterance =
       new SpeechSynthesisUtterance(text);
 
-    utterance.lang = "es-GT";
-
     /*
-     * 1 = velocidad normal.
-     * Puedes probar 0.9 si quieres una
-     * narración ligeramente más pausada.
+     * Buscamos la voz seleccionada.
      */
-    utterance.rate = 1;
+    const selected =
+      voices.find(
+        (voice) =>
+          voice.name === selectedVoice,
+      );
 
+    if (selected) {
+      utterance.voice = selected;
+      utterance.lang = selected.lang;
+    } else {
+      /*
+       * Respaldo si todavía no cargaron
+       * las voces.
+       */
+      utterance.lang = "es-ES";
+    }
+
+    utterance.rate = speechRate;
     utterance.pitch = 1;
     utterance.volume = 1;
 
     utterance.onstart = () => {
       setIsSpeaking(true);
+
       setSpeakingCommentId(
         commentId ?? null,
       );
@@ -210,6 +328,9 @@ export function AiCommentator({
     );
   }
 
+  /*
+   * Detiene manualmente la narración.
+   */
   function stopSpeaking() {
     if (!("speechSynthesis" in window)) {
       return;
@@ -221,6 +342,10 @@ export function AiCommentator({
     setSpeakingCommentId(null);
   }
 
+  /*
+   * Activa/desactiva la narración
+   * automática.
+   */
   function toggleVoice() {
     const nextValue = !voiceEnabled;
 
@@ -230,6 +355,17 @@ export function AiCommentator({
       stopSpeaking();
     }
   }
+
+  /*
+   * Solo mostramos voces en español
+   * dentro del selector.
+   */
+  const spanishVoices = voices.filter(
+    (voice) =>
+      voice.lang
+        .toLowerCase()
+        .startsWith("es"),
+  );
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -264,7 +400,7 @@ export function AiCommentator({
 
             <p className="mt-0.5 mb-0 text-xs text-slate-500">
               {game.speed === "maximum"
-                ? "Desactivada automáticamente en velocidad máxima."
+                ? "La narración automática se pausa en velocidad máxima."
                 : voiceEnabled
                   ? "Los nuevos comentarios se narrarán automáticamente."
                   : "La narración automática está desactivada."}
@@ -287,6 +423,91 @@ export function AiCommentator({
           </button>
         </div>
 
+        {/* CONFIGURACIÓN DE VOZ */}
+        {voiceEnabled && (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* SELECTOR DE VOZ */}
+            <div>
+              <label
+                htmlFor="commentator-voice"
+                className="mb-1 block text-xs font-semibold text-slate-600"
+              >
+                Voz del comentarista
+              </label>
+
+              <select
+                id="commentator-voice"
+                value={selectedVoice}
+                onChange={(event) =>
+                  setSelectedVoice(
+                    event.target.value,
+                  )
+                }
+                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                {spanishVoices.length ===
+                0 ? (
+                  <option value="">
+                    Voz predeterminada
+                  </option>
+                ) : (
+                  spanishVoices.map(
+                    (voice) => (
+                      <option
+                        key={`${voice.name}-${voice.lang}`}
+                        value={voice.name}
+                      >
+                        {voice.name} (
+                        {voice.lang})
+                      </option>
+                    ),
+                  )
+                )}
+              </select>
+            </div>
+
+            {/* SELECTOR DE VELOCIDAD */}
+            <div>
+              <label
+                htmlFor="commentator-speed"
+                className="mb-1 block text-xs font-semibold text-slate-600"
+              >
+                Ritmo de narración
+              </label>
+
+              <select
+                id="commentator-speed"
+                value={speechRate}
+                onChange={(event) =>
+                  setSpeechRate(
+                    Number(
+                      event.target.value,
+                    ),
+                  )
+                }
+                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                <option value={1}>
+                  Tranquila
+                </option>
+
+                <option value={1.15}>
+                  Natural
+                </option>
+
+                <option value={1.25}>
+                  Dinámica
+                </option>
+
+                <option value={1.4}>
+                  Rápida
+                </option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* ESTADO DE REPRODUCCIÓN */}
         {isSpeaking && (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
             <span className="text-xs font-semibold text-green-800">
@@ -325,8 +546,9 @@ export function AiCommentator({
             </p>
 
             <p className="mt-1 mb-0 text-sm text-slate-500">
-              Los comentarios aparecerán y podrán
-              ser narrados durante la partida.
+              Los comentarios aparecerán y
+              podrán ser narrados durante la
+              partida.
             </p>
           </div>
         ) : (
@@ -383,7 +605,7 @@ export function AiCommentator({
                     {comment.message}
                   </p>
 
-                  {/* BOTÓN REPETIR */}
+                  {/* BOTÓN ESCUCHAR */}
                   <div className="mt-3">
                     <button
                       type="button"
