@@ -566,9 +566,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         )}
       </div>
 
-      {/* HISTORIAL DE COMENTARIOS */}
-      <div className="p-4">
-        {isGenerating && (
+      {/* HISTORIAL ESCRITO CON SCROLL */}
+      <div className="max-h-80 overflow-y-auto overscroll-contain p-4 [scrollbar-color:#8A662F_#1B130F] [scrollbar-width:thin]">        {isGenerating && (
           <div className="mb-4 rounded-lg border border-[#75572A] bg-[#362718] px-3 py-3 text-sm text-[#E8B84B]">
             ♛ Analizando movimiento...
           </div>
