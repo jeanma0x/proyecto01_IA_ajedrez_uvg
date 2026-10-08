@@ -251,3 +251,32 @@ resolverla con el docente antes de depender de esa opción.
 - [x] Alternativa de respaldo identificada para al menos un modelo (Anthropic es el respaldo de Mistral; OpenAI directo es el respaldo de Groq)
 - [ ] Parámetros de los 3 niveles de dificultad definidos y probados por modelo
 - [x] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — los 3 modelos `Confirmada` desde 2026-10-08
+
+## Diagnóstico y corrección — partidas terminando en "incident" (2026-10-09)
+
+Tras desplegar OpenAI directo, Jorge reportó que Gemini y Claude seguían terminando casi todas sus
+partidas en incidencia. Diagnóstico directo contra `AiAttempt` en Neon (no se asumió nada) reveló
+**dos bugs de raíz distintos**, no relacionados con qué modelo se use:
+
+1. **Claude (y en menor medida otros) repetía la misma jugada ilegal 2-3 veces seguidas** (ej.
+   `e1→e2` tres veces consecutivas). Causa real: el prompt listaba los movimientos legales solo en
+   notación **SAN** (`e4`, `Nf3`...), pero la función que el modelo debe llamar exige **origen/destino**
+   (`from`/`to`). El modelo no tenía forma de verificar su respuesta contra la lista mostrada —
+   adivinaba desde el FEN directamente, y al fallar, el mensaje de reintento ("elige otra de la lista")
+   no le servía porque la lista no estaba en el mismo formato que su respuesta. **Corrección:** la
+   lista de movimientos legales ahora se construye y se muestra en el mismo formato `origen-destino`
+   que exige la función (`lib/chess/engine.ts::getLegalMovesDetailed`), con la SAN solo como referencia
+   entre paréntesis, y se le pide explícitamente copiar una opción exacta.
+
+2. **Gemini (y en menor medida otros) moría directo a "incident" ante un timeout o un 429/5xx
+   transitorio**, sin dar ninguna oportunidad de recuperación — contradice el propio RF-16
+   ("si falla el servicio: pausar y **permitir reintentar**/finalizar como incidencia"), que la
+   implementación original no honraba (iba directo a incidencia). Bajo la carga de pruebas simultáneas
+   del equipo, estos fallos resultaron ser mayoritariamente transitorios. **Corrección:** fallas de
+   servicio (`TIMEOUT`, `UNAVAILABLE`, `RATE_LIMIT`) ahora se reintentan automáticamente hasta 2 veces
+   con una pausa corta (1.5s para timeout/caído, 4s para límite de cuota) antes de declarar incidencia;
+   `AUTH` nunca se reintenta, porque una credencial inválida no se corrige sola.
+
+**Prueba real tras ambas correcciones** (`npx tsx scripts/test-ten-moves.ts`, 2026-10-09): Gemini
+10/10 (con 2 timeouts transitorios que se resolvieron solos en el reintento), Anthropic 10/10 sin
+ningún reintento, OpenAI 10/10 sin ningún reintento.

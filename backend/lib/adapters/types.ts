@@ -1,6 +1,13 @@
 export type Difficulty = "beginner" | "advanced" | "master";
 export type ChessColor = "white" | "black";
 
+export interface LegalMoveOption {
+  from: string;
+  to: string;
+  san: string;
+  promotion?: "q" | "r" | "b" | "n";
+}
+
 export type AdapterErrorCode = "AUTH" | "RATE_LIMIT" | "TIMEOUT" | "UNAVAILABLE" | "INVALID_FORMAT";
 
 export class AdapterError extends Error {
@@ -17,7 +24,7 @@ export interface MoveRequest {
   fen: string;
   color: ChessColor;
   difficulty: Difficulty;
-  legalMovesSan: string[];
+  legalMoves: LegalMoveOption[];
   recentSanHistory: string[];
   timeoutMs: number;
   // Explica por qué el intento anterior (si hubo uno) fue rechazado — sin

@@ -65,11 +65,21 @@ export function buildPrompt(request: MoveRequest): string {
       ? `Movimientos recientes: ${request.recentSanHistory.join(", ")}.`
       : "Es el primer movimiento de la partida.";
 
+  // Listamos origen→destino (el mismo formato que exige la función de
+  // jugada), no solo SAN — así el modelo puede copiar una opción exacta en
+  // vez de tener que derivar from/to desde la notación algebraica, que es
+  // donde ocurrían la mayoría de jugadas "ilegales" repetidas (ver
+  // docs/04-MODELOS_PENDIENTE.md, 2026-10-09).
+  const legalMovesLine = request.legalMoves
+    .map((move) => `${move.from}-${move.to}${move.promotion ? `=${move.promotion.toUpperCase()}` : ""} (${move.san})`)
+    .join(", ");
+
   return [
     `Eres un jugador de ajedrez controlando las piezas ${request.color === "white" ? "blancas" : "negras"}.`,
     `Posición actual en FEN: ${request.fen}`,
     historyLine,
-    `Movimientos legales disponibles (notación SAN): ${request.legalMovesSan.join(", ")}`,
+    `Movimientos legales disponibles (origen-destino, con su notación SAN entre paréntesis): ${legalMovesLine}`,
+    "Tu jugada (from/to) debe copiar EXACTAMENTE una de esas opciones de origen-destino.",
     profile.instruction,
     `Responde únicamente llamando a la función "${MOVE_FUNCTION_NAME}" con tu jugada elegida.`,
     ...(request.retryFeedback ? [request.retryFeedback] : []),

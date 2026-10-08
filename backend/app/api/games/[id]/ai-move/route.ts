@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { AiAttemptOutcome, Difficulty } from "@prisma/client";
 
 import { prisma } from "@/lib/db/client";
-import { getLegalMovesSan, isMoveLegal } from "@/lib/chess/engine";
+import { getLegalMovesDetailed, isMoveLegal } from "@/lib/chess/engine";
 import { getAdapterForParticipantId } from "@/lib/adapters/registry";
 import { AdapterError } from "@/lib/adapters/types";
 import type { AdapterErrorCode } from "@/lib/adapters/types";
@@ -11,6 +11,18 @@ import { commitMove, currentTurnParticipant, loadActiveGame, markAsIncident } fr
 import { ApiError, handleRouteError } from "@/lib/http/errors";
 
 const MAX_RETRIES_ON_INVALID_MOVE = 2;
+// RF-16 pide dar oportunidad de recuperación ante una falla de servicio, no
+// matar la partida en el primer timeout/429/5xx. Evidencia real en
+// producción (2026-10-09): timeouts y rate limits de Gemini/Claude son en su
+// mayoría transitorios bajo carga de pruebas simultáneas — un reintento con
+// pausa corta suele resolverse solo. AUTH no se reintenta (no se arregla
+// solo). Ver docs/04-MODELOS_PENDIENTE.md.
+const MAX_RETRIES_ON_SERVICE_ERROR = 2;
+const SERVICE_ERROR_RETRY_DELAY_MS: Partial<Record<AdapterErrorCode, number>> = {
+  TIMEOUT: 1500,
+  UNAVAILABLE: 1500,
+  RATE_LIMIT: 4000,
+};
 // Evidencia real (2026-10-09): jugadas exitosas de Gemini tardaron hasta
 // 8.6s; con un límite de 9s, un solo pico de latencia normal terminaba la
 // partida entera como incidencia sin dar chance de reintentar. Vercel Pro
@@ -26,6 +38,10 @@ const ADAPTER_ERROR_TO_OUTCOME: Record<AdapterErrorCode, AiAttemptOutcome> = {
   UNAVAILABLE: "unavailable",
   INVALID_FORMAT: "invalid_format",
 };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -57,7 +73,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       );
     }
 
-    const legalMovesSan = getLegalMovesSan(game.fen);
+    const legalMoves = getLegalMovesDetailed(game.fen);
 
     const recentSanHistory = (
       await prisma.move.findMany({
@@ -71,6 +87,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       .map((move) => move.san);
 
     let retryNumber = 0;
+    let serviceRetryNumber = 0;
     // Sin esto, un reintento reenvía el prompt idéntico y el modelo tiende a
     // repetir la misma jugada rechazada (bug real: Claude repitió c6-f6 tres
     // veces seguidas el 2026-10-08, ver docs/04-MODELOS_PENDIENTE.md).
@@ -84,7 +101,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           fen: game.fen,
           color: game.turn,
           difficulty,
-          legalMovesSan,
+          legalMoves,
           recentSanHistory,
           timeoutMs: AI_REQUEST_TIMEOUT_MS,
           retryFeedback,
@@ -106,7 +123,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           }
 
           retryNumber += 1;
-          retryFeedback = `Tu intento anterior (de ${move.from} a ${move.to}) NO es un movimiento legal en esta posición. No repitas esa jugada — elige otra de la lista de movimientos legales.`;
+          retryFeedback = `Tu intento anterior (${move.from}-${move.to}) NO es un movimiento legal en esta posición. No lo repitas — copia EXACTAMENTE una de las opciones origen-destino listadas arriba.`;
           continue;
         }
 
@@ -130,12 +147,23 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
             latencyMs,
           });
 
-          // Solo "jugada inválida" (formato o legalidad) consume el
-          // presupuesto de reintentos (RF-15). Un fallo de servicio
-          // (auth/cuota/timeout/caído) pasa directo a incidencia (RF-16).
+          // "Jugada inválida" (formato o legalidad) consume el presupuesto de
+          // reintentos de RF-15. Un fallo de servicio (timeout/cuota/caído)
+          // también se reintenta un par de veces con pausa corta antes de
+          // declarar incidencia (RF-16: "pausar y permitir reintentar"), ya
+          // que en producción la mayoría son transitorios bajo carga. AUTH
+          // nunca se reintenta — una credencial inválida no se arregla sola.
           if (outcome === "invalid_format" && retryNumber < MAX_RETRIES_ON_INVALID_MOVE) {
             retryNumber += 1;
             retryFeedback = `Tu respuesta anterior no pudo interpretarse como una jugada válida (${error.message}). Responde solo con la llamada a la función, sin texto adicional.`;
+            continue;
+          }
+
+          const serviceRetryDelayMs = SERVICE_ERROR_RETRY_DELAY_MS[error.code];
+
+          if (serviceRetryDelayMs !== undefined && serviceRetryNumber < MAX_RETRIES_ON_SERVICE_ERROR) {
+            serviceRetryNumber += 1;
+            await sleep(serviceRetryDelayMs);
             continue;
           }
 
