@@ -2,12 +2,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-chess-bg: #0b1120;
-  --color-chess-surface: #151f30;
-  --color-chess-card: #1c293b;
-  --color-chess-gold: #d4af37;
-  --color-chess-gold-light: #f0d77d;
-  --color-chess-muted: #a9b4c5;
+  --color-chess-bg: #160f0d;
+  --color-chess-surface: #211712;
+  --color-chess-card: #2b1e17;
+  --color-chess-gold: #e8b84b;
+  --color-chess-gold-light: #f5d782;
+  --color-chess-muted: #b6a18a;
 }
 
 @layer base {
@@ -21,24 +21,16 @@
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
-    background: #0b1120;
-    color: #f1f5f9;
-    font-family:
-      Inter,
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      sans-serif;
+    background: #160f0d;
+    color: #eadfce;
+    font-family: Inter, ui-sans-serif, system-ui,
+      -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
   }
 
-  button,
-  select,
-  input,
-  textarea {
+  button, input, select, textarea {
     font: inherit;
   }
 
@@ -48,15 +40,6 @@
 
   button:disabled {
     cursor: not-allowed;
-    opacity: 0.55;
-  }
-
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible,
-  select:focus-visible {
-    outline: 2px solid #f0d77d;
-    outline-offset: 3px;
   }
 
   #root {
@@ -64,7 +47,7 @@
   }
 
   ::selection {
-    background: #d4af37;
-    color: #0b1120;
+    background: #e8b84b;
+    color: #160f0d;
   }
 }

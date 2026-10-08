@@ -1,9 +1,11 @@
+
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+
 import { Chessboard } from "react-chessboard";
 
 import type {
@@ -19,16 +21,16 @@ import {
   requestAiMove,
 } from "../../services/api/gameApi";
 
-import type { GameSpeed, GameState } from "../../types/api";
+import type {
+  GameSpeed,
+  GameState,
+} from "../../types/api";
 
 interface ChessBoardProps {
   game: GameState;
   onGameChange: (game: GameState) => void;
 }
 
-// RF-19/20: la velocidad solo cambia el ritmo entre jugadas de IA, nunca
-// oculta movimientos ni altera su orden (ver lib/game/move-service.ts en el
-// backend, que sigue aplicando un movimiento a la vez).
 const AI_MOVE_DELAY_MS: Record<GameSpeed, number> = {
   normal: 1200,
   fast: 400,
@@ -39,13 +41,10 @@ export function ChessBoard({
   game,
   onGameChange,
 }: ChessBoardProps) {
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [
-    isSubmittingMove,
-    setIsSubmittingMove,
-  ] = useState(false);
+  const [isSubmittingMove, setIsSubmittingMove] =
+    useState(false);
 
   const [legalTargets, setLegalTargets] =
     useState<string[]>([]);
@@ -53,10 +52,8 @@ export function ChessBoard({
   const [aiError, setAiError] =
     useState<string | null>(null);
 
-  const [
-    isRequestingAiMove,
-    setIsRequestingAiMove,
-  ] = useState(false);
+  const [isRequestingAiMove, setIsRequestingAiMove] =
+    useState(false);
 
   const aiRequestInFlightRef = useRef(false);
   const mountedRef = useRef(true);
@@ -127,9 +124,7 @@ export function ChessBoard({
       });
   }, [game.id, onGameChange]);
 
-  // Dispara automáticamente el turno de la IA (RF-13): sin esto, una
-  // partida con IA nunca avanza por sí sola. Se reprograma solo cuando
-  // cambia el turno/estado/velocidad — pausar limpia el timer pendiente.
+  // Mantiene el movimiento automático de la IA.
   useEffect(() => {
     if (game.status !== "active" || currentTurnIsHuman) {
       return;
@@ -190,9 +185,7 @@ export function ChessBoard({
         onGameChange(updatedGame);
       })
       .catch((caughtError: unknown) => {
-        if (
-          caughtError instanceof ApiClientError
-        ) {
+        if (caughtError instanceof ApiClientError) {
           setError(caughtError.message);
         } else {
           setError(
@@ -207,34 +200,40 @@ export function ChessBoard({
     return true;
   }
 
+  // COLORES DEL TABLERO
+  const LIGHT_SQUARE = "#E8D0A9";
+  const DARK_SQUARE = "#A67C52";
+
   const squareStyles: Record<
     string,
     React.CSSProperties
   > = {};
 
+  // Resaltar el último movimiento en dorado.
   if (game.lastMove) {
     squareStyles[game.lastMove.from] = {
-      backgroundColor:
-        "rgba(250, 204, 21, 0.45)",
+      backgroundColor: "rgba(232, 184, 75, 0.50)",
     };
 
     squareStyles[game.lastMove.to] = {
-      backgroundColor:
-        "rgba(250, 204, 21, 0.45)",
+      backgroundColor: "rgba(232, 184, 75, 0.50)",
     };
   }
 
+  // Movimientos legales.
   for (const square of legalTargets) {
     squareStyles[square] = {
       ...squareStyles[square],
       boxShadow:
-        "inset 0 0 0 5px rgba(37, 99, 235, 0.55)",
+        "inset 0 0 0 5px rgba(232, 184, 75, 0.75)",
     };
   }
 
   return (
     <section className="w-full max-w-[650px]">
-      <div className="w-full overflow-hidden rounded-xl shadow-md">
+
+      {/* TABLERO */}
+      <div className="overflow-hidden rounded-lg border border-[#8A662F] bg-[#2B1E17] shadow-2xl">
         <Chessboard
           options={{
             position: game.fen,
@@ -243,104 +242,121 @@ export function ChessBoard({
             onPieceDrag: handlePieceDrag,
             squareStyles,
             allowDragging: canInteract,
+            lightSquareStyle: {
+              backgroundColor: LIGHT_SQUARE,
+            },
+            darkSquareStyle: {
+              backgroundColor: DARK_SQUARE,
+            },
           }}
         />
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mt-0 mb-4 text-lg font-bold text-slate-900">
-          Estado de la partida
-        </h2>
+      {/* INFORMACIÓN DE PARTIDA */}
+      <div className="mt-4 overflow-hidden rounded-xl border border-[#59412A] bg-[#241A15] shadow-lg">
 
-        <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-              Blancas
-            </span>
-
-            <strong>
-              {
-                game.white.participant
-                  .displayName
-              }
-            </strong>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-              Negras
-            </span>
-
-            <strong>
-              {
-                game.black.participant
-                  .displayName
-              }
-            </strong>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-              Turno
-            </span>
-
-            <strong>
-              {game.turn === "white"
-                ? "Blancas"
-                : "Negras"}
-            </strong>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-              Movimientos
-            </span>
-
-            <strong>{game.moveCount}</strong>
-          </div>
+        <div className="border-b border-[#493522] bg-[#302218] px-5 py-4">
+          <h2 className="m-0 text-lg font-bold text-[#E8B84B]">
+            ♛ Estado de la partida
+          </h2>
+          <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
+            Información actual del enfrentamiento
+          </p>
         </div>
 
-        {game.status === "active" &&
-          !currentTurnIsHuman &&
-          !aiError && (
-            <p className="mt-3 mb-0 text-slate-600">
-              {isRequestingAiMove
-                ? "La IA está pensando..."
-                : "Esperando movimiento de la IA..."}
+        <div className="p-5">
+          <div className="grid grid-cols-2 gap-4">
+
+            {/* BLANCAS */}
+            <div className="rounded-lg border border-[#493522] bg-[#1B130F] p-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#B6A18A]">
+                ♙ Blancas
+              </span>
+              <strong className="mt-2 block break-words text-sm text-[#F0DFBF]">
+                {game.white.participant.displayName}
+              </strong>
+            </div>
+
+            {/* NEGRAS */}
+            <div className="rounded-lg border border-[#493522] bg-[#1B130F] p-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#B6A18A]">
+                ♟ Negras
+              </span>
+              <strong className="mt-2 block break-words text-sm text-[#F0DFBF]">
+                {game.black.participant.displayName}
+              </strong>
+            </div>
+
+            {/* TURNO */}
+            <div className="rounded-lg border border-[#493522] bg-[#1B130F] p-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#B6A18A]">
+                Turno actual
+              </span>
+              <strong className="mt-2 block text-sm text-[#E8B84B]">
+                {game.turn === "white"
+                  ? "♙ Blancas"
+                  : "♟ Negras"}
+              </strong>
+            </div>
+
+            {/* MOVIMIENTOS */}
+            <div className="rounded-lg border border-[#493522] bg-[#1B130F] p-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#B6A18A]">
+                Movimientos
+              </span>
+              <strong className="mt-2 block text-lg text-[#E8B84B]">
+                {game.moveCount}
+              </strong>
+            </div>
+          </div>
+
+          {/* IA PENSANDO */}
+          {game.status === "active" &&
+            !currentTurnIsHuman &&
+            !aiError && (
+              <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#75572A] bg-[#362718] px-4 py-3">
+                <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#E8B84B]" />
+                <p className="m-0 text-sm text-[#F5D782]">
+                  {isRequestingAiMove
+                    ? "La IA está pensando..."
+                    : "Esperando movimiento de la IA..."}
+                </p>
+              </div>
+            )}
+
+          {isSubmittingMove && (
+            <p className="mb-0 mt-3 text-sm text-[#E8B84B]">
+              Procesando movimiento...
             </p>
           )}
 
-        {isSubmittingMove && (
-          <p className="mt-3 mb-0 text-slate-600">
-            Procesando movimiento...
-          </p>
-        )}
-
-        {error && (
-          <p
-            role="alert"
-            className="mt-3 mb-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800"
-          >
-            {error}
-          </p>
-        )}
-
-        {aiError && (
-          <div
-            role="alert"
-            className="mt-3 flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800"
-          >
-            <span>{aiError}</span>
-
-            <button
-              type="button"
-              className="min-h-9 self-start rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-semibold text-red-800 transition hover:bg-red-100 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-              onClick={requestAiTurn}
+          {/* ERRORES */}
+          {error && (
+            <p
+              role="alert"
+              className="mb-0 mt-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-3 text-sm text-red-300"
             >
-              Reintentar
-            </button>
-          </div>
-        )}
+              {error}
+            </p>
+          )}
+
+          {aiError && (
+            <div
+              role="alert"
+              className="mt-4 flex flex-col gap-3 rounded-lg border border-red-800 bg-red-950/50 px-3 py-3 text-sm text-red-300"
+            >
+              <span>{aiError}</span>
+
+              <button
+                type="button"
+                className="min-h-9 self-start rounded-lg border border-red-700 bg-red-900/40 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-900/70"
+                onClick={requestAiTurn}
+              >
+                Reintentar movimiento
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

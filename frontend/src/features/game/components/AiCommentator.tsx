@@ -435,36 +435,38 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     voice.lang.toLowerCase().startsWith("es"),
   );
 
+ 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-[#59412A] bg-[#241A15] text-[#EADFCF] shadow-xl">
+
       {/* ENCABEZADO */}
-      <div className="border-b border-slate-200 bg-slate-900 px-4 py-3 text-white">
-        <div className="flex items-center justify-between gap-3">
+      <div className="border-b border-[#59412A] bg-[#302218] px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="m-0 text-lg font-bold">
-              🎙️ Comentarista IA
+            <h2 className="m-0 text-lg font-bold text-[#E8B84B]">
+              🎙 Comentarista IA
             </h2>
-            <p className="mt-1 mb-0 text-xs text-slate-300">
+            <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
               Narración sincronizada con la partida
             </p>
           </div>
 
           {game.status === "active" && (
-            <span className="rounded-full bg-green-500/20 px-2.5 py-1 text-xs font-semibold text-green-300">
+            <span className="rounded-full border border-emerald-700/50 bg-emerald-950/50 px-3 py-1 text-xs font-bold text-emerald-400">
               ● EN VIVO
             </span>
           )}
         </div>
       </div>
 
-      {/* CONTROLES */}
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+      {/* CONTROLES DE VOZ */}
+      <div className="border-b border-[#493522] bg-[#2B1E17] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="m-0 text-sm font-semibold text-slate-800">
+            <p className="m-0 text-sm font-semibold text-[#F0DFBF]">
               🔊 Narración por voz
             </p>
-            <p className="mt-0.5 mb-0 text-xs text-slate-500">
+            <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
               {game.speed === "maximum"
                 ? "Sin narración automática en velocidad máxima."
                 : voiceEnabled
@@ -479,30 +481,31 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             aria-pressed={voiceEnabled}
             className={
               voiceEnabled
-                ? "rounded-full bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
-                : "rounded-full bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-300"
+                ? "rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-2 text-xs font-bold text-[#211712] transition hover:bg-[#F5D782]"
+                : "rounded-lg border border-[#75572A] bg-[#362718] px-4 py-2 text-xs font-bold text-[#B6A18A] transition hover:bg-[#49331E]"
             }
           >
-            {voiceEnabled ? "VOZ ON" : "VOZ OFF"}
+            {voiceEnabled ? "● VOZ ON" : "○ VOZ OFF"}
           </button>
         </div>
 
         {voiceEnabled && (
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label
                 htmlFor="commentator-voice"
-                className="mb-1 block text-xs font-semibold text-slate-600"
+                className="mb-2 block text-xs font-semibold text-[#D9C5A7]"
               >
                 Voz del comentarista
               </label>
+
               <select
                 id="commentator-voice"
                 value={selectedVoice}
                 onChange={(event) =>
                   setSelectedVoice(event.target.value)
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700"
+                className="w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF] outline-none focus:border-[#E8B84B]"
               >
                 {spanishVoices.length === 0 ? (
                   <option value="">
@@ -524,17 +527,18 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             <div>
               <label
                 htmlFor="commentator-speed"
-                className="mb-1 block text-xs font-semibold text-slate-600"
+                className="mb-2 block text-xs font-semibold text-[#D9C5A7]"
               >
                 Ritmo de narración
               </label>
+
               <select
                 id="commentator-speed"
                 value={speechRate}
                 onChange={(event) =>
                   setSpeechRate(Number(event.target.value))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700"
+                className="w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF] outline-none focus:border-[#E8B84B]"
               >
                 <option value={1}>Tranquila</option>
                 <option value={1.15}>Natural</option>
@@ -546,15 +550,15 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         )}
 
         {isSpeaking && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
-            <span className="text-xs font-semibold text-green-800">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#75572A] bg-[#3A2A1B] px-3 py-3">
+            <span className="text-xs font-semibold text-[#F5D782]">
               🔊 Narrando en vivo...
             </span>
 
             <button
               type="button"
               onClick={stopSpeaking}
-              className="text-xs font-bold text-red-600 hover:underline"
+              className="text-xs font-bold text-red-400 hover:underline"
             >
               Detener
             </button>
@@ -562,80 +566,76 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         )}
       </div>
 
-      {/* HISTORIAL ESCRITO */}
+      {/* HISTORIAL DE COMENTARIOS */}
       <div className="p-4">
         {isGenerating && (
-          <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
-            🤖 Analizando movimiento...
+          <div className="mb-4 rounded-lg border border-[#75572A] bg-[#362718] px-3 py-3 text-sm text-[#E8B84B]">
+            ♛ Analizando movimiento...
           </div>
         )}
 
         {comments.length === 0 ? (
-          <div className="py-5 text-center">
-            <div className="mb-2 text-3xl">♟️</div>
-            <p className="m-0 font-semibold text-slate-700">
+          <div className="py-7 text-center">
+            <div className="mb-3 text-4xl text-[#E8B84B]">
+              ♟
+            </div>
+            <p className="m-0 font-semibold text-[#F0DFBF]">
               Esperando el primer movimiento
             </p>
-            <p className="mt-1 mb-0 text-sm text-slate-500">
+            <p className="mb-0 mt-2 text-sm text-[#B6A18A]">
               Los comentarios aparecerán durante la partida.
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {comments.map((comment, index) => (
               <article
                 key={comment.id}
                 className={
                   index === 0
-                    ? "rounded-lg border border-blue-200 bg-blue-50 p-3"
-                    : "border-t border-slate-100 pt-3"
+                    ? "rounded-xl border border-[#8A662F] bg-[#382818] p-4"
+                    : "rounded-xl border border-[#493522] bg-[#1B130F] p-4"
                 }
               >
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wide text-[#B6A18A]">
                     Movimiento {comment.moveNumber}
                   </span>
 
                   {index === 0 && (
-                    <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    <span className="rounded-md bg-[#E8B84B] px-2 py-1 text-[10px] font-bold text-[#211712]">
                       ÚLTIMO
                     </span>
                   )}
 
-                  <span
-                    className={
-                      comment.generatedByAi
-                        ? "rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700"
-                        : "rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
-                    }
-                  >
+                  <span className="rounded-md border border-[#75572A] bg-[#49331E] px-2 py-1 text-[10px] font-semibold text-[#F5D782]">
                     {comment.generatedByAi ? "IA" : "LOCAL"}
                   </span>
                 </div>
 
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <strong className="text-sm text-slate-900">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <strong className="text-sm text-[#F0DFBF]">
                     {comment.player}
                   </strong>
 
-                  <code className="rounded bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">
+                  <code className="rounded-md border border-[#59412A] bg-[#211712] px-3 py-1 text-xs font-bold text-[#E8B84B]">
                     {comment.move}
                   </code>
                 </div>
 
-                <p className="m-0 text-sm leading-relaxed text-slate-700">
+                <p className="m-0 text-sm leading-relaxed text-[#D9C5A7]">
                   {comment.message}
                 </p>
 
-                <div className="mt-3">
+                <div className="mt-4">
                   <button
                     type="button"
                     onClick={() => listenManually(comment)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-[#75572A] bg-[#49331E] px-4 py-2 text-xs font-semibold text-[#F5D782] transition hover:bg-[#624529]"
                   >
                     {speakingCommentId === comment.id
                       ? "🔊 Reproduciendo..."
-                      : "🔊 Escuchar"}
+                      : "🔊 Escuchar comentario"}
                   </button>
                 </div>
               </article>
