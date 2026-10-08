@@ -142,6 +142,7 @@ export class StockfishService {
         error instanceof Error
           ? `No se pudo iniciar Stockfish: ${error.message}`
           : "No se pudo crear el Web Worker de Stockfish.",
+        { cause: error },
       );
     }
   }
