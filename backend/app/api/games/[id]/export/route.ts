@@ -15,12 +15,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       throw new ApiError("GAME_NOT_FOUND", "La partida solicitada no existe.");
     }
 
-    const moves = await prisma.move.findMany({ where: { gameId: id }, orderBy: { ply: "asc" } });
+    const [moves, aiAttempts] = await Promise.all([
+      prisma.move.findMany({ where: { gameId: id }, orderBy: { ply: "asc" } }),
+      prisma.aiAttempt.findMany({
+        where: { gameId: id },
+        orderBy: [{ ply: "asc" }, { retryNumber: "asc" }],
+      }),
+    ]);
 
     if (format === "csv") {
-      const header = "ply,color,piece,from,to,san,fenAfter";
+      // Comillas en fenAfter por defensa (RFC 4180): aunque el FEN actual no
+      // trae comas, cualquier campo de texto libre debería ir entrecomillado
+      // para abrir limpio en Excel/pandas sin depender de su contenido.
+      const header = "ply,color,piece,from,to,san,fenAfter,latencyMs";
       const rows = moves.map(
-        (move) => `${move.ply},${move.color},${move.piece},${move.from},${move.to},${move.san},${move.fenAfter}`,
+        (move) =>
+          `${move.ply},${move.color},${move.piece},${move.from},${move.to},${move.san},"${move.fenAfter}",${move.latencyMs ?? ""}`,
       );
 
       return new NextResponse([header, ...rows].join("\n"), {
@@ -40,36 +50,81 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       });
     }
 
-    return NextResponse.json({
-      game: serializeGame(game),
-      moves: moves.map((move) => ({
-        ply: move.ply,
-        color: move.color,
-        piece: move.piece,
-        from: move.from,
-        to: move.to,
-        san: move.san,
-        fenAfter: move.fenAfter,
-      })),
-    });
+    // JSON: incluye también los intentos de IA (reintentos, errores,
+    // latencia) — es la misma información que ya se le muestra a Jorge para
+    // el análisis de resultados (rúbrica ítem 10), así no tiene que volver a
+    // consultar la base de datos aparte para esos datos. Se omite
+    // rawResponse a propósito (son payloads crudos de proveedor, no aportan
+    // al análisis y pueden tener texto sensible/ruidoso).
+    return NextResponse.json(
+      {
+        game: serializeGame(game),
+        moves: moves.map((move) => ({
+          ply: move.ply,
+          color: move.color,
+          piece: move.piece,
+          from: move.from,
+          to: move.to,
+          san: move.san,
+          fenAfter: move.fenAfter,
+          latencyMs: move.latencyMs,
+        })),
+        aiAttempts: aiAttempts.map((attempt) => ({
+          ply: attempt.ply,
+          provider: attempt.provider,
+          modelId: attempt.modelId,
+          difficulty: attempt.difficulty,
+          retryNumber: attempt.retryNumber,
+          outcome: attempt.outcome,
+          latencyMs: attempt.latencyMs,
+        })),
+      },
+      {
+        headers: {
+          "Content-Disposition": `attachment; filename="game-${id}.json"`,
+        },
+      },
+    );
   } catch (error) {
     return handleRouteError(error);
   }
 }
 
+interface PgnParticipant {
+  displayName: string;
+  company?: string | null;
+  modelId?: string | null;
+}
+
 function buildPgn(
-  game: { whiteParticipant: { displayName: string }; blackParticipant: { displayName: string }; result: string | null; startedAt: Date | null },
+  game: {
+    whiteParticipant: PgnParticipant;
+    blackParticipant: PgnParticipant;
+    whiteDifficulty: string | null;
+    blackDifficulty: string | null;
+    result: string | null;
+    reason: string | null;
+    startedAt: Date | null;
+  },
   moves: { ply: number; san: string; color: string }[],
 ): string {
   const pgnResult =
     game.result === "white_win" ? "1-0" : game.result === "black_win" ? "0-1" : game.result === "draw" ? "1/2-1/2" : "*";
 
+  // Etiquetas no estándar (Company/Difficulty) son válidas en PGN — los
+  // lectores que no las reconocen simplemente las ignoran — y dejan la
+  // partida autodocumentada sin tener que cruzarla con la base de datos.
   const headers = [
     `[Event "Duelo de Inteligencias"]`,
     `[Date "${game.startedAt ? game.startedAt.toISOString().slice(0, 10).replace(/-/g, ".") : "????.??.??"}"]`,
     `[White "${game.whiteParticipant.displayName}"]`,
     `[Black "${game.blackParticipant.displayName}"]`,
     `[Result "${pgnResult}"]`,
+    ...(game.whiteParticipant.company ? [`[WhiteCompany "${game.whiteParticipant.company}"]`] : []),
+    ...(game.blackParticipant.company ? [`[BlackCompany "${game.blackParticipant.company}"]`] : []),
+    ...(game.whiteDifficulty ? [`[WhiteDifficulty "${game.whiteDifficulty}"]`] : []),
+    ...(game.blackDifficulty ? [`[BlackDifficulty "${game.blackDifficulty}"]`] : []),
+    `[Termination "${game.reason === "technical_incident" ? "abandoned" : "normal"}"]`,
   ].join("\n");
 
   const body = moves
@@ -84,5 +139,5 @@ function buildPgn(
     }, [])
     .join(" ");
 
-  return `${headers}\n\n${body} ${pgnResult}\n`;
+  return `${headers}\n\n${body}${body ? " " : ""}${pgnResult}\n`;
 }
