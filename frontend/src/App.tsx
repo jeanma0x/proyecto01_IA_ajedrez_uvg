@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 import { ChessBoard } from "./components/chess/ChessBoard";
@@ -9,16 +9,60 @@ import { GameResult } from "./features/game/components/GameResult";
 import { MoveHistory } from "./features/game/components/MoveHistory";
 import { AiCommentator } from "./features/game/components/AiCommentator";
 import { GameReview } from "./features/analysis/components/GameReview";
+import { getGame } from "./services/api/gameApi";
 
 import type { GameState } from "./types/api";
+
+// Recordar la partida activa en el navegador: sin esto, refrescar la página
+// borra el estado en memoria y manda al usuario de vuelta al menú de
+// configuración aunque la partida siga viva en el backend.
+const ACTIVE_GAME_STORAGE_KEY = "duelo-ia:active-game-id";
 
 function App() {
   const [game, setGame] = useState<GameState | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
+  const [isRestoringGame, setIsRestoringGame] = useState(
+    () => localStorage.getItem(ACTIVE_GAME_STORAGE_KEY) !== null,
+  );
+  const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
+
+  useEffect(() => {
+    const savedGameId = localStorage.getItem(ACTIVE_GAME_STORAGE_KEY);
+
+    if (!savedGameId) {
+      return;
+    }
+
+    getGame(savedGameId)
+      .then((restoredGame) => {
+        setGame(restoredGame);
+      })
+      .catch(() => {
+        // La partida guardada ya no existe o no se pudo cargar — no bloquear
+        // al usuario, solo olvidar la referencia y mostrar el menú normal.
+        localStorage.removeItem(ACTIVE_GAME_STORAGE_KEY);
+      })
+      .finally(() => {
+        setIsRestoringGame(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (game) {
+      localStorage.setItem(ACTIVE_GAME_STORAGE_KEY, game.id);
+    } else {
+      localStorage.removeItem(ACTIVE_GAME_STORAGE_KEY);
+    }
+  }, [game]);
 
   function handleNewGame() {
+    setShowNewGameConfirm(false);
     setIsReviewing(false);
     setGame(null);
+  }
+
+  function handleRequestNewGame() {
+    setShowNewGameConfirm(true);
   }
 
   function handleOpenReview() {
@@ -63,8 +107,15 @@ function App() {
 
       <main className="chess-container py-5">
 
+        {/* RESTAURANDO PARTIDA GUARDADA */}
+        {!game && isRestoringGame && (
+          <div className="mx-auto w-full max-w-3xl text-center">
+            <p className="text-sm text-[#B6A18A]">Cargando tu partida...</p>
+          </div>
+        )}
+
         {/* CONFIGURACIÓN */}
-        {!game && (
+        {!game && !isRestoringGame && (
           <div className="mx-auto w-full max-w-3xl">
             <div className="mb-5 text-center">
               <h2 className="chess-title text-2xl font-bold">
@@ -140,7 +191,7 @@ function App() {
                   <button
                     type="button"
                     className="chess-button-gold w-full"
-                    onClick={handleNewGame}
+                    onClick={handleRequestNewGame}
                   >
                     ♟ Nueva partida
                   </button>
@@ -197,6 +248,48 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* CONFIRMACIÓN DE NUEVA PARTIDA */}
+      {showNewGameConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-new-game-title"
+        >
+          <div className="chess-panel w-full max-w-sm">
+            <h2
+              id="confirm-new-game-title"
+              className="chess-panel-title"
+            >
+              ¿Cancelar la partida actual?
+            </h2>
+
+            <p className="mb-5 mt-2 text-sm text-[#B6A18A]">
+              Si inicias una partida nueva, la que está en curso se perderá y
+              no podrás continuarla.
+            </p>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                className="chess-button-gold w-full cursor-pointer"
+                onClick={handleNewGame}
+              >
+                Sí, iniciar nueva partida
+              </button>
+
+              <button
+                type="button"
+                className="w-full cursor-pointer rounded-lg border border-[#B6A18A]/40 bg-transparent px-4 py-2 text-sm font-semibold text-[#B6A18A] transition-colors duration-200 hover:bg-[#B6A18A]/10"
+                onClick={() => setShowNewGameConfirm(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
