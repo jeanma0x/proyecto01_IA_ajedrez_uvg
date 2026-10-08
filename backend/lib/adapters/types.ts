@@ -20,6 +20,11 @@ export interface MoveRequest {
   legalMovesSan: string[];
   recentSanHistory: string[];
   timeoutMs: number;
+  // Explica por qué el intento anterior (si hubo uno) fue rechazado — sin
+  // esto, un reintento reenvía el mismo prompt y el modelo tiende a repetir
+  // la misma jugada inválida (bug real: ver docs/04-MODELOS_PENDIENTE.md,
+  // 2026-10-08).
+  retryFeedback?: string;
 }
 
 export interface MoveResponse {

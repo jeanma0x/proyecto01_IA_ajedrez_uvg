@@ -71,6 +71,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       .map((move) => move.san);
 
     let retryNumber = 0;
+    // Sin esto, un reintento reenvía el prompt idéntico y el modelo tiende a
+    // repetir la misma jugada rechazada (bug real: Claude repitió c6-f6 tres
+    // veces seguidas el 2026-10-08, ver docs/04-MODELOS_PENDIENTE.md).
+    let retryFeedback: string | undefined;
 
     while (true) {
       const startedAt = Date.now();
@@ -83,6 +87,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           legalMovesSan,
           recentSanHistory,
           timeoutMs: AI_REQUEST_TIMEOUT_MS,
+          retryFeedback,
         });
 
         const latencyMs = Date.now() - startedAt;
@@ -101,6 +106,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           }
 
           retryNumber += 1;
+          retryFeedback = `Tu intento anterior (de ${move.from} a ${move.to}) NO es un movimiento legal en esta posición. No repitas esa jugada — elige otra de la lista de movimientos legales.`;
           continue;
         }
 
@@ -129,6 +135,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           // (auth/cuota/timeout/caído) pasa directo a incidencia (RF-16).
           if (outcome === "invalid_format" && retryNumber < MAX_RETRIES_ON_INVALID_MOVE) {
             retryNumber += 1;
+            retryFeedback = `Tu respuesta anterior no pudo interpretarse como una jugada válida (${error.message}). Responde solo con la llamada a la función, sin texto adicional.`;
             continue;
           }
 

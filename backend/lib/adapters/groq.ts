@@ -86,6 +86,15 @@ function translateError(error: unknown): AdapterError {
     if (error.status && error.status >= 500) {
       return new AdapterError("UNAVAILABLE", "Groq no está disponible en este momento.");
     }
+
+    // Groq valida `tool_choice: "required"` del lado del servidor y
+    // devuelve 400 si el modelo no llamó a la función (en vez de regresar
+    // una respuesta sin tool_calls) — bug real encontrado el 2026-10-08:
+    // esto es "jugada mal formada", no un servicio caído, así que debe
+    // poder reintentarse (RF-15) en vez de ir directo a incidencia (RF-16).
+    if (error.status === 400) {
+      return new AdapterError("INVALID_FORMAT", "El modelo (vía Groq) no llamó a la función de jugada.");
+    }
   }
 
   return new AdapterError("UNAVAILABLE", `Error inesperado llamando a Groq: ${String(error)}`);
