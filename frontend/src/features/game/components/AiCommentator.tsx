@@ -2,12 +2,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getMoves } from "../../../services/api/gameApi";
-
 import type { GameState, Move } from "../../../types/api";
 
 interface AiCommentatorProps {
   game: GameState;
 }
+
+type MoveCategory =
+  | "normal"
+  | "development"
+  | "center"
+  | "capture"
+  | "check"
+  | "checkmate"
+  | "castle"
+  | "promotion";
 
 interface Commentary {
   id: number;
@@ -15,10 +24,25 @@ interface Commentary {
   player: string;
   move: string;
   message: string;
-  type: string;
+  category: MoveCategory;
+}
+
+interface ChessCommentary {
+  text: string;
+  category: MoveCategory;
+  excitement: number;
 }
 
 const MAX_COMMENTS = 8;
+
+const PIECE_NAMES: Record<string, string> = {
+  p: "peón",
+  n: "caballo",
+  b: "alfil",
+  r: "torre",
+  q: "dama",
+  k: "rey",
+};
 
 function getLastPlayer(game: GameState): string {
   return game.turn === "black"
@@ -26,8 +50,34 @@ function getLastPlayer(game: GameState): string {
     : game.black.participant.displayName;
 }
 
-function getMoveType(san?: string): string {
-  if (!san) return "normal";
+function getPieceName(move?: Move): string {
+  if (!move) return "pieza";
+
+  const san = move.san;
+
+  if (san.startsWith("N")) return "caballo";
+  if (san.startsWith("B")) return "alfil";
+  if (san.startsWith("R")) return "torre";
+  if (san.startsWith("Q")) return "dama";
+  if (san.startsWith("K")) return "rey";
+
+  return PIECE_NAMES[move.piece.toLowerCase()] ?? "peón";
+}
+
+function getMoveCategory(
+  move: Move | undefined,
+  game: GameState,
+): MoveCategory {
+  if (
+    game.status === "finished" &&
+    game.reason === "checkmate"
+  ) {
+    return "checkmate";
+  }
+
+  if (!move) return "normal";
+
+  const san = move.san;
 
   if (san.includes("#")) return "checkmate";
   if (san.includes("+")) return "check";
@@ -35,79 +85,145 @@ function getMoveType(san?: string): string {
   if (san.includes("=")) return "promotion";
   if (san.includes("x")) return "capture";
 
+  if (["d4", "e4", "d5", "e5"].includes(move.to)) {
+    return "center";
+  }
+
+  if (
+    ["n", "b"].includes(move.piece.toLowerCase()) &&
+    move.ply <= 16
+  ) {
+    return "development";
+  }
+
   return "normal";
 }
 
-function getMoveDescription(
-  move: Move | undefined,
+function generateChessCommentary(
   game: GameState,
-  previousNarratedMove: number,
-): string {
-  const difference =
-    game.moveCount - previousNarratedMove;
-
+  move?: Move,
+  previousNarratedMove = game.moveCount - 1,
+): ChessCommentary {
   const player = getLastPlayer(game);
+  const from = game.lastMove?.from ?? "";
+  const to = game.lastMove?.to ?? "";
+  const piece = getPieceName(move);
+
+  const difference = Math.max(
+    1,
+    game.moveCount - previousNarratedMove,
+  );
+
+  const category = getMoveCategory(move, game);
 
   if (game.status === "incident") {
-    return "¡Atención! La partida se ha detenido por una incidencia técnica.";
+    return {
+      text: "¡Atención! El duelo se ha detenido por una incidencia técnica.",
+      category: "normal",
+      excitement: 2,
+    };
   }
 
-  if (game.status === "finished") {
-    if (game.reason === "checkmate") {
-      return "¡Jaque mate! ¡Qué final de partida! Tenemos un ganador.";
-    }
-
-    return "¡Se terminó el enfrentamiento! La partida ha llegado a su final.";
+  if (
+    game.status === "finished" &&
+    game.reason !== "checkmate"
+  ) {
+    return {
+      text: "¡Final del enfrentamiento! La partida ha llegado a su conclusión.",
+      category: "normal",
+      excitement: 3,
+    };
   }
 
-  if (!game.lastMove) {
-    return "¡La partida continúa! Seguimos atentos al tablero.";
-  }
+  const templates: Record<MoveCategory, string[]> = {
+    checkmate: [
+      `¡Jaque mate! ¡Se acabó, se acabó! ¡${player} sentencia el enfrentamiento!`,
+      `¡Impresionante! ¡Jaque mate de ${player}! ¡Qué final de partida!`,
+      `¡Final espectacular! ¡${player} consigue el jaque mate!`,
+    ],
 
-  const { from, to } = game.lastMove;
-  const type = getMoveType(move?.san);
+    check: [
+      `¡Cuidado con ese rey! ¡${player} acaba de dar jaque!`,
+      `¡Atención! ¡Jaque de ${player}! ¡El rival tiene que responder!`,
+      `¡Se encienden las alarmas! ${player} amenaza directamente al rey rival.`,
+    ],
 
-  if (type === "checkmate") {
-    return `¡Jaque mate! ¡Impresionante cierre de ${player}!`;
-  }
+    capture: [
+      `¡Y tenemos captura! ¡${player} se lleva una pieza rival con su ${piece}!`,
+      `¡Atención a esta jugada! El ${piece} de ${player} captura una pieza enemiga.`,
+      `¡Se produce una captura! ${player} utiliza su ${piece} para eliminar una pieza rival.`,
+    ],
 
-  if (type === "check") {
-    return `¡Atención! ${player} pone al rey rival en jaque. ¡Hay peligro en el tablero!`;
-  }
+    castle: [
+      `¡Y llega el enroque! ${player} busca mayor seguridad para su rey.`,
+      `¡Movimiento defensivo! ${player} realiza el enroque y protege a su monarca.`,
+      `¡El rey cambia de posición! ${player} completa el enroque.`,
+    ],
 
-  if (type === "capture") {
-    return `¡Y tenemos una captura! ${player} se lleva una pieza rival en ${to}. ¡Se mueve el tablero!`;
-  }
+    promotion: [
+      `¡Increíble momento! ¡${player} consigue promocionar un peón!`,
+      `¡Qué jugada! ¡Un peón de ${player} alcanza la última fila!`,
+      `¡Atención! ¡${player} transforma uno de sus peones en una nueva pieza!`,
+    ],
 
-  if (type === "castle") {
-    return `¡Movimiento defensivo! ${player} realiza el enroque y protege a su rey.`;
-  }
+    center: [
+      `¡${player} va directo al centro! Su ${piece} ocupa ${to}.`,
+      `¡Se pelea por el centro del tablero! ${player} mueve su ${piece} hacia ${to}.`,
+      `¡Movimiento con intención! ${player} coloca su ${piece} en una casilla central.`,
+    ],
 
-  if (type === "promotion") {
-    return `¡Increíble! ${player} consigue promocionar un peón. ¡Momento importante!`;
-  }
+    development: [
+      `¡Ahí viene ${player}! Desarrolla su ${piece} hacia ${to}. ¡Comienza la batalla!`,
+      `¡Se ponen las piezas en acción! ${player} moviliza su ${piece}.`,
+      `¡Atención al desarrollo! ${player} lleva su ${piece} hacia ${to}.`,
+    ],
 
-  if (difference >= 3) {
-    const variations = [
-      `¡Qué ritmo lleva esta partida! Han pasado ${difference} jugadas y ${player} acaba de mover a ${to}.`,
-      `¡Esto no se detiene! Tras ${difference} movimientos, ${player} realiza la última jugada hacia ${to}.`,
-      `¡La batalla continúa! El tablero ha avanzado ${difference} jugadas. ${player} acaba de mover a ${to}.`,
-      `¡Vaya velocidad! ${difference} movimientos desde nuestra última intervención. ${player} juega hacia ${to}.`,
+    normal: [
+      `¡Ahí va ${player}! Su ${piece} se desplaza hacia ${to}.`,
+      `¡Tenemos nueva jugada! ${player} mueve su ${piece} hacia ${to}.`,
+      `¡Continúa el duelo! ${player} coloca su ${piece} en ${to}.`,
+      `¡Se mueve el tablero! ${player} juega con su ${piece}.`,
+      `¡Nueva decisión de ${player}! Su ${piece} llega hasta ${to}.`,
+      `¡Atención al tablero! ${player} mueve de ${from} a ${to}.`,
+    ],
+  };
+
+  const options = templates[category];
+
+  const index =
+    (game.moveCount * 7 + (from.charCodeAt(0) || 0)) %
+    options.length;
+
+  let text = options[index] ?? options[0];
+
+  if (
+    difference >= 3 &&
+    category !== "checkmate" &&
+    category !== "check"
+  ) {
+    const summaries = [
+      `¡Qué ritmo lleva esta partida! Han pasado ${difference} jugadas. ${player} acaba de mover su ${piece} hacia ${to}.`,
+      `¡Esto no se detiene! Tras ${difference} movimientos, ${player} realiza la última jugada con su ${piece}.`,
+      `¡Vaya velocidad! El tablero ha avanzado ${difference} jugadas. ${player} acaba de jugar hacia ${to}.`,
     ];
 
-    return variations[game.moveCount % variations.length];
+    text = summaries[game.moveCount % summaries.length];
   }
 
-  const variations = [
-    `¡Atención al tablero! ${player} mueve de ${from} a ${to}. ¡Seguimos!`,
-    `¡Ahí va ${player}! Nueva jugada hacia ${to}. ¡La partida continúa!`,
-    `${player} mueve de ${from} a ${to}. ¡Veremos cómo responde su rival!`,
-    `¡Tenemos movimiento! ${player} coloca una pieza en ${to}.`,
-    `¡Continúa el duelo! ${player} acaba de jugar hacia ${to}.`,
-    `¡Se mueve el tablero! ${player} realiza una nueva jugada en ${to}.`,
-  ];
+  const excitement =
+    category === "checkmate"
+      ? 5
+      : category === "check" || category === "promotion"
+        ? 4
+        : category === "capture"
+          ? 3
+          : 2;
 
-  return variations[game.moveCount % variations.length];
+  return {
+    text,
+    category,
+    excitement,
+  };
 }
 
 export function AiCommentator({ game }: AiCommentatorProps) {
@@ -116,7 +232,6 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
-
   const [currentNarration, setCurrentNarration] =
     useState<string | null>(null);
 
@@ -186,15 +301,17 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   }, []);
 
   const speakText = useCallback(
-    (text: string, moveNumber: number) => {
+    (
+      text: string,
+      moveNumber: number,
+      excitement = 2,
+    ) => {
       if (!mountedRef.current || speakingRef.current) return;
-
       if (!("speechSynthesis" in window)) return;
 
       speakingRef.current = true;
 
       const session = sessionRef.current;
-
       const utterance = new SpeechSynthesisUtterance(text);
 
       activeUtteranceRef.current = utterance;
@@ -213,7 +330,14 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       }
 
       utterance.rate = settings.speechRate;
-      utterance.pitch = 1.12;
+
+      utterance.pitch =
+        excitement >= 4
+          ? 1.18
+          : excitement === 3
+            ? 1.12
+            : 1.05;
+
       utterance.volume = 1;
 
       lastNarratedMoveRef.current = moveNumber;
@@ -224,7 +348,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       let completed = false;
 
       const finish = () => {
-        if (completed || session !== sessionRef.current) return;
+        if (completed || session !== sessionRef.current) {
+          return;
+        }
 
         completed = true;
         speakingRef.current = false;
@@ -268,18 +394,22 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       (move) => move.ply === latest.moveCount,
     );
 
-    const message = getMoveDescription(
-      latestMove,
+    const commentary = generateChessCommentary(
       latest,
+      latestMove,
       lastNarratedMoveRef.current,
     );
 
-    speakText(message, latest.moveCount);
+    speakText(
+      commentary.text,
+      latest.moveCount,
+      commentary.excitement,
+    );
   }, [speakText]);
 
   playLatestRef.current = playLatest;
 
-  // Limpiar narración al desmontar el componente.
+  // Limpiar narración al desmontar.
   useEffect(() => {
     mountedRef.current = true;
 
@@ -300,7 +430,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     };
   }, []);
 
-  // Cargar voces disponibles.
+  // Cargar voces.
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
 
@@ -353,7 +483,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     };
   }, []);
 
-  // Obtener movimientos para reconocer eventos especiales.
+  // Obtener historial de movimientos.
   useEffect(() => {
     let cancelled = false;
 
@@ -367,7 +497,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
           );
         }
       } catch {
-        // El comentarista sigue funcionando sin historial.
+        // Continuar sin historial si la API falla.
       }
     }
 
@@ -378,7 +508,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     };
   }, [game.id, game.moveCount]);
 
-  // Detectar movimientos nuevos.
+  // Detectar movimientos.
   useEffect(() => {
     if (
       game.moveCount <= previousMoveCountRef.current
@@ -395,9 +525,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       (move) => move.ply === game.moveCount,
     );
 
-    const message = getMoveDescription(
-      latestMove,
+    const commentary = generateChessCommentary(
       game,
+      latestMove,
       Math.max(0, game.moveCount - 1),
     );
 
@@ -408,8 +538,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       moveNumber: game.moveCount,
       player,
       move: `${game.lastMove.from} → ${game.lastMove.to}`,
-      message,
-      type: getMoveType(latestMove?.san),
+      message: commentary.text,
+      category: commentary.category,
     };
 
     setComments((current) =>
@@ -418,7 +548,6 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         .slice(0, MAX_COMMENTS),
     );
 
-    // La voz solo utiliza el estado más reciente.
     playLatest();
   }, [
     game.id,
@@ -447,15 +576,28 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   function listenManually(comment: Commentary) {
     stopSpeaking();
+
     speakText(
       comment.message,
       latestGameRef.current.moveCount,
+      2,
     );
   }
 
   const spanishVoices = voices.filter((voice) =>
     voice.lang.toLowerCase().startsWith("es"),
   );
+
+  const CATEGORY_LABELS: Record<MoveCategory, string> = {
+    normal: "JUGADA",
+    development: "DESARROLLO",
+    center: "CENTRO",
+    capture: "CAPTURA",
+    check: "JAQUE",
+    checkmate: "JAQUE MATE",
+    castle: "ENROQUE",
+    promotion: "PROMOCIÓN",
+  };
 
   return (
     <section className="overflow-hidden rounded-xl border border-[#59412A] bg-[#241A15] text-[#EADFCF] shadow-xl">
@@ -637,9 +779,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                   )}
 
                   <span className="rounded-md border border-[#75572A] bg-[#49331E] px-2 py-1 text-[10px] font-semibold text-[#F5D782]">
-                    {comment.type === "normal"
-                      ? "JUGADA"
-                      : comment.type.toUpperCase()}
+                    {CATEGORY_LABELS[comment.category]}
                   </span>
                 </div>
 
