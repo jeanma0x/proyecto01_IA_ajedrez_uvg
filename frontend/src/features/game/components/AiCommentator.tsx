@@ -1,8 +1,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { requestAiCommentary } from "../../../services/api/gameApi";
-import type { GameState } from "../../../types/api";
+import { getMoves } from "../../../services/api/gameApi";
+
+import type { GameState, Move } from "../../../types/api";
 
 interface AiCommentatorProps {
   game: GameState;
@@ -14,10 +15,10 @@ interface Commentary {
   player: string;
   move: string;
   message: string;
-  generatedByAi: boolean;
+  type: string;
 }
 
-const MAX_COMMENTS = 5;
+const MAX_COMMENTS = 8;
 
 function getLastPlayer(game: GameState): string {
   return game.turn === "black"
@@ -25,93 +26,124 @@ function getLastPlayer(game: GameState): string {
     : game.black.participant.displayName;
 }
 
-function generateFallbackComment(game: GameState): string {
-  if (!game.lastMove) return "La partida continúa.";
+function getMoveType(san?: string): string {
+  if (!san) return "normal";
 
-  const player = getLastPlayer(game);
-  const { from, to } = game.lastMove;
+  if (san.includes("#")) return "checkmate";
+  if (san.includes("+")) return "check";
+  if (/^O-O(-O)?/.test(san)) return "castle";
+  if (san.includes("=")) return "promotion";
+  if (san.includes("x")) return "capture";
 
-  if (game.status === "finished") {
-    if (game.reason === "checkmate") {
-      return "¡Jaque mate! La partida ha terminado.";
-    }
-
-    return "La partida ha terminado.";
-  }
-
-  return `${player} mueve de ${from} a ${to}. La partida continúa.`;
+  return "normal";
 }
 
-function generateLiveSummary(
+function getMoveDescription(
+  move: Move | undefined,
   game: GameState,
-  lastNarratedMove: number,
+  previousNarratedMove: number,
 ): string {
-  const difference = game.moveCount - lastNarratedMove;
+  const difference =
+    game.moveCount - previousNarratedMove;
+
+  const player = getLastPlayer(game);
+
+  if (game.status === "incident") {
+    return "¡Atención! La partida se ha detenido por una incidencia técnica.";
+  }
 
   if (game.status === "finished") {
     if (game.reason === "checkmate") {
-      return "¡Jaque mate! Tenemos un ganador.";
+      return "¡Jaque mate! ¡Qué final de partida! Tenemos un ganador.";
     }
 
-    return "La partida ha llegado a su final.";
-  }
-
-  if (game.status === "incident") {
-    return "La partida se ha detenido por una incidencia técnica.";
+    return "¡Se terminó el enfrentamiento! La partida ha llegado a su final.";
   }
 
   if (!game.lastMove) {
-    return "La partida continúa.";
+    return "¡La partida continúa! Seguimos atentos al tablero.";
   }
 
-  const player = getLastPlayer(game);
   const { from, to } = game.lastMove;
+  const type = getMoveType(move?.san);
+
+  if (type === "checkmate") {
+    return `¡Jaque mate! ¡Impresionante cierre de ${player}!`;
+  }
+
+  if (type === "check") {
+    return `¡Atención! ${player} pone al rey rival en jaque. ¡Hay peligro en el tablero!`;
+  }
+
+  if (type === "capture") {
+    return `¡Y tenemos una captura! ${player} se lleva una pieza rival en ${to}. ¡Se mueve el tablero!`;
+  }
+
+  if (type === "castle") {
+    return `¡Movimiento defensivo! ${player} realiza el enroque y protege a su rey.`;
+  }
+
+  if (type === "promotion") {
+    return `¡Increíble! ${player} consigue promocionar un peón. ¡Momento importante!`;
+  }
 
   if (difference >= 3) {
-    return (
-      `¡La partida avanza rápidamente! ` +
-      `Se han realizado ${difference} movimientos. ` +
-      `${player} acaba de jugar de ${from} a ${to}.`
-    );
+    const variations = [
+      `¡Qué ritmo lleva esta partida! Han pasado ${difference} jugadas y ${player} acaba de mover a ${to}.`,
+      `¡Esto no se detiene! Tras ${difference} movimientos, ${player} realiza la última jugada hacia ${to}.`,
+      `¡La batalla continúa! El tablero ha avanzado ${difference} jugadas. ${player} acaba de mover a ${to}.`,
+      `¡Vaya velocidad! ${difference} movimientos desde nuestra última intervención. ${player} juega hacia ${to}.`,
+    ];
+
+    return variations[game.moveCount % variations.length];
   }
 
-  if (difference === 2) {
-    return (
-      `Dos nuevas jugadas sobre el tablero. ` +
-      `${player} acaba de mover de ${from} a ${to}.`
-    );
-  }
+  const variations = [
+    `¡Atención al tablero! ${player} mueve de ${from} a ${to}. ¡Seguimos!`,
+    `¡Ahí va ${player}! Nueva jugada hacia ${to}. ¡La partida continúa!`,
+    `${player} mueve de ${from} a ${to}. ¡Veremos cómo responde su rival!`,
+    `¡Tenemos movimiento! ${player} coloca una pieza en ${to}.`,
+    `¡Continúa el duelo! ${player} acaba de jugar hacia ${to}.`,
+    `¡Se mueve el tablero! ${player} realiza una nueva jugada en ${to}.`,
+  ];
 
-  return `${player} mueve de ${from} a ${to}.`;
+  return variations[game.moveCount % variations.length];
 }
 
 export function AiCommentator({ game }: AiCommentatorProps) {
   const [comments, setComments] = useState<Commentary[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [moves, setMoves] = useState<Move[]>([]);
 
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speakingCommentId, setSpeakingCommentId] =
-    useState<number | null>(null);
 
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState("");
-  const [speechRate, setSpeechRate] = useState(1.25);
+  const [currentNarration, setCurrentNarration] =
+    useState<string | null>(null);
+
+  const [voices, setVoices] =
+    useState<SpeechSynthesisVoice[]>([]);
+
+  const [selectedVoice, setSelectedVoice] =
+    useState("");
+
+  const [speechRate, setSpeechRate] =
+    useState(1.25);
 
   const latestGameRef = useRef(game);
   latestGameRef.current = game;
+
+  const movesRef = useRef(moves);
+  movesRef.current = moves;
 
   const previousMoveCountRef = useRef(game.moveCount);
   const lastNarratedMoveRef = useRef(game.moveCount);
 
   const speakingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const sessionRef = useRef(0);
+
   const activeUtteranceRef =
     useRef<SpeechSynthesisUtterance | null>(null);
-
-  const sessionRef = useRef(0);
-  const mountedRef = useRef(true);
-  const gameIdRef = useRef(game.id);
-  const pendingRequestsRef = useRef(0);
 
   const voiceEnabledRef = useRef(voiceEnabled);
   voiceEnabledRef.current = voiceEnabled;
@@ -130,7 +162,6 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   const playLatestRef = useRef<() => void>(() => {});
 
-  // Detiene la voz solamente cuando el usuario lo solicita.
   const stopSpeaking = useCallback(() => {
     sessionRef.current += 1;
     speakingRef.current = false;
@@ -147,44 +178,48 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
     if (mountedRef.current) {
       setIsSpeaking(false);
-      setSpeakingCommentId(null);
+      setCurrentNarration(null);
     }
 
-    // No volver a narrar movimientos anteriores.
     lastNarratedMoveRef.current =
       latestGameRef.current.moveCount;
   }, []);
 
   const speakText = useCallback(
-    (text: string, commentId: number | null, moveNumber: number) => {
+    (text: string, moveNumber: number) => {
       if (!mountedRef.current || speakingRef.current) return;
+
       if (!("speechSynthesis" in window)) return;
 
       speakingRef.current = true;
+
       const session = sessionRef.current;
 
       const utterance = new SpeechSynthesisUtterance(text);
+
       activeUtteranceRef.current = utterance;
 
       const settings = voiceSettingsRef.current;
-      const voice = settings.voices.find(
-        (item) => item.voiceURI === settings.selectedVoice,
+
+      const selected = settings.voices.find(
+        (voice) => voice.voiceURI === settings.selectedVoice,
       );
 
-      if (voice) {
-        utterance.voice = voice;
-        utterance.lang = voice.lang;
+      if (selected) {
+        utterance.voice = selected;
+        utterance.lang = selected.lang;
       } else {
         utterance.lang = "es-ES";
       }
 
       utterance.rate = settings.speechRate;
-      utterance.pitch = 1;
+      utterance.pitch = 1.12;
       utterance.volume = 1;
 
       lastNarratedMoveRef.current = moveNumber;
+
+      setCurrentNarration(text);
       setIsSpeaking(true);
-      setSpeakingCommentId(commentId);
 
       let completed = false;
 
@@ -198,9 +233,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         if (!mountedRef.current) return;
 
         setIsSpeaking(false);
-        setSpeakingCommentId(null);
+        setCurrentNarration(null);
 
-        // Al terminar, revisar si el tablero avanzó.
         playLatestRef.current();
       };
 
@@ -230,17 +264,22 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       return;
     }
 
-    const summary = generateLiveSummary(
+    const latestMove = movesRef.current.find(
+      (move) => move.ply === latest.moveCount,
+    );
+
+    const message = getMoveDescription(
+      latestMove,
       latest,
       lastNarratedMoveRef.current,
     );
 
-    speakText(summary, null, latest.moveCount);
+    speakText(message, latest.moveCount);
   }, [speakText]);
 
   playLatestRef.current = playLatest;
 
-  // Limpieza al desmontar.
+  // Limpiar narración al desmontar el componente.
   useEffect(() => {
     mountedRef.current = true;
 
@@ -269,12 +308,15 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
     function loadVoices() {
       const available = synth.getVoices();
+
       setVoices(available);
 
       setSelectedVoice((current) => {
         if (
           current &&
-          available.some((voice) => voice.voiceURI === current)
+          available.some(
+            (voice) => voice.voiceURI === current,
+          )
         ) {
           return current;
         }
@@ -285,7 +327,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
         const preferred =
           spanish.find((voice) =>
-            /natural|neural|google|microsoft/i.test(voice.name),
+            /natural|neural|google|microsoft/i.test(
+              voice.name,
+            ),
           ) ??
           spanish[0] ??
           available[0];
@@ -295,31 +339,50 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     }
 
     loadVoices();
-    synth.addEventListener("voiceschanged", loadVoices);
+
+    synth.addEventListener(
+      "voiceschanged",
+      loadVoices,
+    );
 
     return () => {
-      synth.removeEventListener("voiceschanged", loadVoices);
+      synth.removeEventListener(
+        "voiceschanged",
+        loadVoices,
+      );
     };
   }, []);
 
-  // Reiniciar cuando cambia la partida.
+  // Obtener movimientos para reconocer eventos especiales.
   useEffect(() => {
-    if (gameIdRef.current === game.id) return;
+    let cancelled = false;
 
-    gameIdRef.current = game.id;
-    stopSpeaking();
+    async function loadMoves() {
+      try {
+        const response = await getMoves(game.id);
 
-    previousMoveCountRef.current = game.moveCount;
-    lastNarratedMoveRef.current = game.moveCount;
+        if (!cancelled) {
+          setMoves(
+            [...response].sort((a, b) => a.ply - b.ply),
+          );
+        }
+      } catch {
+        // El comentarista sigue funcionando sin historial.
+      }
+    }
 
-    pendingRequestsRef.current = 0;
-    setIsGenerating(false);
-    setComments([]);
-  }, [game.id, game.moveCount, stopSpeaking]);
+    void loadMoves();
 
-  // Detectar movimientos y generar historial escrito.
+    return () => {
+      cancelled = true;
+    };
+  }, [game.id, game.moveCount]);
+
+  // Detectar movimientos nuevos.
   useEffect(() => {
-    if (game.moveCount <= previousMoveCountRef.current) {
+    if (
+      game.moveCount <= previousMoveCountRef.current
+    ) {
       previousMoveCountRef.current = game.moveCount;
       return;
     }
@@ -328,71 +391,34 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
     if (!game.lastMove) return;
 
-    const snapshot = {
-      ...game,
-      lastMove: { ...game.lastMove },
+    const latestMove = movesRef.current.find(
+      (move) => move.ply === game.moveCount,
+    );
+
+    const message = getMoveDescription(
+      latestMove,
+      game,
+      Math.max(0, game.moveCount - 1),
+    );
+
+    const player = getLastPlayer(game);
+
+    const newComment: Commentary = {
+      id: game.moveCount,
+      moveNumber: game.moveCount,
+      player,
+      move: `${game.lastMove.from} → ${game.lastMove.to}`,
+      message,
+      type: getMoveType(latestMove?.san),
     };
 
-    const player = getLastPlayer(snapshot);
-    const move =
-      `${snapshot.lastMove.from} → ${snapshot.lastMove.to}`;
+    setComments((current) =>
+      [newComment, ...current]
+        .sort((a, b) => b.moveNumber - a.moveNumber)
+        .slice(0, MAX_COMMENTS),
+    );
 
-    pendingRequestsRef.current += 1;
-    setIsGenerating(true);
-
-    async function generateCommentary() {
-      let message: string;
-      let generatedByAi = false;
-
-      try {
-        const response = await requestAiCommentary(snapshot.id, {
-          fen: snapshot.fen,
-          moveNumber: snapshot.moveCount,
-          lastMove: snapshot.lastMove,
-        });
-
-        if (!response.commentary?.trim()) {
-          throw new Error("Comentario vacío");
-        }
-
-        message = response.commentary.trim();
-        generatedByAi = true;
-      } catch {
-        message = generateFallbackComment(snapshot);
-      } finally {
-        pendingRequestsRef.current = Math.max(
-          0,
-          pendingRequestsRef.current - 1,
-        );
-
-        if (mountedRef.current) {
-          setIsGenerating(pendingRequestsRef.current > 0);
-        }
-      }
-
-      if (!mountedRef.current) return;
-      if (gameIdRef.current !== snapshot.id) return;
-
-      const newComment: Commentary = {
-        id: snapshot.moveCount,
-        moveNumber: snapshot.moveCount,
-        player,
-        move,
-        message,
-        generatedByAi,
-      };
-
-      setComments((current) =>
-        [newComment, ...current]
-          .sort((a, b) => b.moveNumber - a.moveNumber)
-          .slice(0, MAX_COMMENTS),
-      );
-    }
-
-    void generateCommentary();
-
-    // La voz utiliza el último estado, no las respuestas
-    // individuales de la API.
+    // La voz solo utiliza el estado más reciente.
     playLatest();
   }, [
     game.id,
@@ -414,7 +440,6 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     if (!next) {
       stopSpeaking();
     } else {
-      // Comenzar con movimientos futuros, sin recuperar atrasados.
       lastNarratedMoveRef.current =
         latestGameRef.current.moveCount;
     }
@@ -422,11 +447,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   function listenManually(comment: Commentary) {
     stopSpeaking();
-
-    // El botón manual reproduce el comentario elegido.
     speakText(
       comment.message,
-      comment.id,
       latestGameRef.current.moveCount,
     );
   }
@@ -435,10 +457,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     voice.lang.toLowerCase().startsWith("es"),
   );
 
- 
   return (
     <section className="overflow-hidden rounded-xl border border-[#59412A] bg-[#241A15] text-[#EADFCF] shadow-xl">
-
       {/* ENCABEZADO */}
       <div className="border-b border-[#59412A] bg-[#302218] px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -446,8 +466,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             <h2 className="m-0 text-lg font-bold text-[#E8B84B]">
               🎙 Comentarista IA
             </h2>
+
             <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
-              Narración sincronizada con la partida
+              Narración deportiva en vivo
             </p>
           </div>
 
@@ -466,11 +487,12 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             <p className="m-0 text-sm font-semibold text-[#F0DFBF]">
               🔊 Narración por voz
             </p>
+
             <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
               {game.speed === "maximum"
                 ? "Sin narración automática en velocidad máxima."
                 : voiceEnabled
-                  ? "Narración breve, sin interrupciones ni cola."
+                  ? "Narración deportiva sin interrupciones."
                   : "La narración automática está desactivada."}
             </p>
           </div>
@@ -548,11 +570,14 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             </div>
           </div>
         )}
+      </div>
 
-        {isSpeaking && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#75572A] bg-[#3A2A1B] px-3 py-3">
-            <span className="text-xs font-semibold text-[#F5D782]">
-              🔊 Narrando en vivo...
+      {/* NARRACIÓN ACTUAL */}
+      {isSpeaking && currentNarration && (
+        <div className="border-b border-[#75572A] bg-[#3A2A1B] p-4">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-[#E8B84B]">
+              🔊 Narrando ahora
             </span>
 
             <button
@@ -563,24 +588,28 @@ export function AiCommentator({ game }: AiCommentatorProps) {
               Detener
             </button>
           </div>
-        )}
-      </div>
 
-      {/* HISTORIAL ESCRITO CON SCROLL */}
-      <div className="max-h-80 overflow-y-auto overscroll-contain p-4 [scrollbar-color:#8A662F_#1B130F] [scrollbar-width:thin]">        {isGenerating && (
-          <div className="mb-4 rounded-lg border border-[#75572A] bg-[#362718] px-3 py-3 text-sm text-[#E8B84B]">
-            ♛ Analizando movimiento...
-          </div>
-        )}
+          <p
+            aria-live="polite"
+            className="m-0 text-sm font-semibold leading-relaxed text-[#F5D782]"
+          >
+            {currentNarration}
+          </p>
+        </div>
+      )}
 
+      {/* HISTORIAL DE COMENTARIOS */}
+      <div className="max-h-80 overflow-y-auto overscroll-contain p-4">
         {comments.length === 0 ? (
           <div className="py-7 text-center">
             <div className="mb-3 text-4xl text-[#E8B84B]">
               ♟
             </div>
+
             <p className="m-0 font-semibold text-[#F0DFBF]">
               Esperando el primer movimiento
             </p>
+
             <p className="mb-0 mt-2 text-sm text-[#B6A18A]">
               Los comentarios aparecerán durante la partida.
             </p>
@@ -608,7 +637,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                   )}
 
                   <span className="rounded-md border border-[#75572A] bg-[#49331E] px-2 py-1 text-[10px] font-semibold text-[#F5D782]">
-                    {comment.generatedByAi ? "IA" : "LOCAL"}
+                    {comment.type === "normal"
+                      ? "JUGADA"
+                      : comment.type.toUpperCase()}
                   </span>
                 </div>
 
@@ -632,9 +663,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                     onClick={() => listenManually(comment)}
                     className="rounded-lg border border-[#75572A] bg-[#49331E] px-4 py-2 text-xs font-semibold text-[#F5D782] transition hover:bg-[#624529]"
                   >
-                    {speakingCommentId === comment.id
-                      ? "🔊 Reproduciendo..."
-                      : "🔊 Escuchar comentario"}
+                    🔊 Escuchar comentario
                   </button>
                 </div>
               </article>
