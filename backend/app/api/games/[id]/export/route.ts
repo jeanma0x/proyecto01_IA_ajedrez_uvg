@@ -33,7 +33,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           `${move.ply},${move.color},${move.piece},${move.from},${move.to},${move.san},"${move.fenAfter}",${move.latencyMs ?? ""}`,
       );
 
-      return new NextResponse([header, ...rows].join("\n"), {
+      // "sep=," como primera línea: sin esto, Excel usa el separador de
+      // listas de la configuración regional de Windows/macOS (en varias
+      // configuraciones en español es ";", no ","), y todo el archivo se ve
+      // aplastado en una sola columna al abrirlo con doble clic. Esta
+      // directiva la reconoce Excel explícitamente sin importar la región —
+      // solo hay que indicarle a quien procese el CSV por código (pandas,
+      // scripts) que ignore la primera línea.
+      const csv = ["sep=,", header, ...rows].join("\r\n");
+
+      return new NextResponse(csv, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition": `attachment; filename="game-${id}.csv"`,
