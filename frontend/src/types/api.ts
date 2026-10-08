@@ -76,6 +76,9 @@ export interface GameState {
     from: string;
     to: string;
   };
+
+  isCheck: boolean;
+  checkedSquare: string | null;
 }
 
 export interface CreateGameRequest {

@@ -1,5 +1,7 @@
 import type { Game, Participant } from "@prisma/client";
 
+import { getCheckState } from "@/lib/chess/engine";
+
 // Mismo contrato que frontend/src/types/api.ts GameState — mantener en sync.
 export interface GameParticipantDto {
   participant: {
@@ -36,6 +38,8 @@ export interface GameStateDto {
   endedAt: string | null;
   moveCount: number;
   lastMove?: { from: string; to: string };
+  isCheck: boolean;
+  checkedSquare: string | null;
 }
 
 type GameWithParticipants = Game & {
@@ -54,6 +58,8 @@ function serializeParticipant(participant: Participant): GameParticipantDto["par
 }
 
 export function serializeGame(game: GameWithParticipants): GameStateDto {
+  const checkState = getCheckState(game.fen);
+
   return {
     id: game.id,
     white: {
@@ -79,6 +85,8 @@ export function serializeGame(game: GameWithParticipants): GameStateDto {
       game.lastMoveFrom && game.lastMoveTo
         ? { from: game.lastMoveFrom, to: game.lastMoveTo }
         : undefined,
+    isCheck: checkState.inCheck,
+    checkedSquare: checkState.checkedSquare,
   };
 }
 

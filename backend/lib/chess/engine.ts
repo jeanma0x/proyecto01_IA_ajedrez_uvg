@@ -96,6 +96,29 @@ export function getLegalMovesDetailed(fen: string): LegalMoveOption[] {
     }));
 }
 
+export interface CheckState {
+  inCheck: boolean;
+  checkedSquare: string | null;
+}
+
+// Jaque se calcula aquí (capa de motor), no en el frontend — ver CLAUDE.md,
+// "nada de lógica de reglas de ajedrez fuera de la capa de motor".
+export function getCheckState(fen: string): CheckState {
+  const chess = new Chess(fen);
+
+  if (!chess.inCheck()) {
+    return { inCheck: false, checkedSquare: null };
+  }
+
+  const colorInCheck = chess.turn();
+  const checkedKingSquare = chess
+    .board()
+    .flat()
+    .find((piece) => piece?.type === "k" && piece.color === colorInCheck)?.square;
+
+  return { inCheck: true, checkedSquare: checkedKingSquare ?? null };
+}
+
 export function getTerminalState(fen: string): TerminalState {
   const chess = new Chess(fen);
 
