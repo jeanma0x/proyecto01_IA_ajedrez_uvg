@@ -1,17 +1,28 @@
+
 @import "tailwindcss";
+
+@theme {
+  --color-chess-bg: #0b1120;
+  --color-chess-surface: #151f30;
+  --color-chess-card: #1c293b;
+  --color-chess-gold: #d4af37;
+  --color-chess-gold-light: #f0d77d;
+  --color-chess-muted: #a9b4c5;
+}
 
 @layer base {
   html {
     min-width: 320px;
     min-height: 100%;
+    color-scheme: dark;
   }
 
   body {
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
-    background-color: #f8fafc;
-    color: #172033;
+    background: #0b1120;
+    color: #f1f5f9;
     font-family:
       Inter,
       ui-sans-serif,
@@ -26,7 +37,8 @@
 
   button,
   select,
-  input {
+  input,
+  textarea {
     font: inherit;
   }
 
@@ -36,9 +48,23 @@
 
   button:disabled {
     cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 2px solid #f0d77d;
+    outline-offset: 3px;
   }
 
   #root {
     min-height: 100vh;
+  }
+
+  ::selection {
+    background: #d4af37;
+    color: #0b1120;
   }
 }
