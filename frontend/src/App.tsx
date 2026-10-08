@@ -29,24 +29,27 @@ function App() {
     setIsReviewing(false);
   }
 
+  const isGameFinished =
+    game?.status === "finished" ||
+    game?.status === "incident";
+
   return (
-    <div className="chess-app min-h-screen text-slate-100">
+    <div className="chess-app min-h-screen">
 
-      {/* ENCABEZADO PREMIUM */}
+      {/* ENCABEZADO */}
       <header className="chess-header">
-        <div className="mx-auto flex w-[min(calc(100%-28px),1280px)] flex-wrap items-center justify-between gap-4 py-5 sm:w-[min(calc(100%-48px),1280px)]">
-
-          <div className="flex items-center gap-4">
+        <div className="chess-container flex flex-wrap items-center justify-between gap-4 py-4">
+          <div className="flex items-center gap-3">
             <div className="chess-logo" aria-hidden="true">
               ♛
             </div>
 
             <div>
-              <h1 className="chess-title m-0 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="chess-title m-0 text-xl font-extrabold tracking-tight sm:text-2xl">
                 Duelo de Inteligencias
               </h1>
 
-              <p className="mb-0 mt-1 text-sm text-slate-400">
+              <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
                 Ajedrez entre humanos y modelos de inteligencia artificial
               </p>
             </div>
@@ -58,25 +61,18 @@ function App() {
         </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="mx-auto w-[min(calc(100%-28px),1280px)] py-7 sm:w-[min(calc(100%-48px),1280px)] sm:py-9">
+      <main className="chess-container py-5">
 
-        {/* CONFIGURACIÓN DE PARTIDA */}
+        {/* CONFIGURACIÓN */}
         {!game && (
-          <div className="mx-auto mt-5 w-full max-w-2xl">
-
-            <div className="mb-7 text-center">
-              <div className="mb-3 text-5xl text-amber-400">
-                ♚
-              </div>
-
-              <h2 className="chess-title text-3xl font-bold">
-                El desafío comienza aquí
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="mb-5 text-center">
+              <h2 className="chess-title text-2xl font-bold">
+                ♛ El desafío comienza aquí
               </h2>
 
-              <p className="mt-3 text-slate-400">
-                Configura tu partida y prepárate para
-                desafiar a la inteligencia artificial.
+              <p className="mt-2 text-sm text-[#B6A18A]">
+                Configura los participantes y comienza tu partida.
               </p>
             </div>
 
@@ -91,16 +87,16 @@ function App() {
           </div>
         )}
 
-        {/* REVISOR DE PARTIDAS */}
+        {/* REVISIÓN */}
         {game && isReviewing && (
-          <div>
-            <div className="mb-6">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-5">
               <h2 className="chess-title text-2xl font-bold">
                 ♛ Análisis de partida
               </h2>
 
-              <p className="mt-2 text-slate-400">
-                Revisa cada movimiento y estudia tus decisiones.
+              <p className="mt-2 text-sm text-[#B6A18A]">
+                Revisa los movimientos de la partida.
               </p>
             </div>
 
@@ -111,23 +107,23 @@ function App() {
           </div>
         )}
 
-        {/* PARTIDA NORMAL */}
+        {/* DASHBOARD DE PARTIDA */}
         {game && !isReviewing && (
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,650px)_minmax(0,1fr)] lg:gap-8">
+          <div className="chess-game-layout">
 
-            {/* TABLERO */}
-            <div className="mx-auto w-full max-w-[650px] lg:mx-0">
-
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            {/* COLUMNA IZQUIERDA */}
+            <div className="chess-game-left">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="chess-panel-title">
                   ♟ Tablero de juego
                 </h2>
 
                 <span className="chess-tag">
-                  {game.status === "finished" ||
-                   game.status === "incident"
+                  {isGameFinished
                     ? "PARTIDA FINALIZADA"
-                    : "PARTIDA EN CURSO"}
+                    : game.status === "paused"
+                      ? "PARTIDA PAUSADA"
+                      : "PARTIDA EN CURSO"}
                 </span>
               </div>
 
@@ -137,85 +133,68 @@ function App() {
                   onGameChange={setGame}
                 />
               </div>
+
+              {/* NUEVA PARTIDA A LA IZQUIERDA */}
+              {!isGameFinished && (
+                <div className="chess-new-game">
+                  <button
+                    type="button"
+                    className="chess-button-gold w-full"
+                    onClick={handleNewGame}
+                  >
+                    ♟ Nueva partida
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* BOTÓN NUEVA PARTIDA DEBAJO DEL TABLERO */}
-            {game.status !== "finished" &&
-              game.status !== "incident" && (
-            <section className="mt-4 rounded-xl border border-[#59412A] bg-[#241A15] p-4 shadow-lg">
-            <button
-              type="button"
-              className="chess-button-gold w-full"
-              onClick={handleNewGame}
-              >
-                ♟ Nueva partida
-            </button>
-            </section>
-            )}
-
-            {/* PANEL DERECHO */}
+            {/* COLUMNA DERECHA */}
             <aside
-              className="flex min-w-0 flex-col gap-4"
+              className="chess-game-right"
               aria-label="Información y controles de la partida"
             >
-
-              {/* CONTROLES */}
               <GameControls
                 game={game}
                 onGameChange={setGame}
               />
 
-              {/* COMENTARISTA IA */}
               <AiCommentator game={game} />
 
-              {/* HISTORIAL */}
               <MoveHistory
                 gameId={game.id}
                 moveCount={game.moveCount}
               />
 
-              {/* RESULTADO */}
               <GameResult
                 game={game}
                 onNewGame={handleNewGame}
               />
 
               {/* ANÁLISIS */}
-              {(game.status === "finished" ||
-                game.status === "incident") && (
+              {isGameFinished && (
                 <section className="chess-panel">
-
                   <h2 className="chess-panel-title">
                     ♛ Análisis de partida
                   </h2>
 
-                  <p className="mb-5 mt-2 text-sm text-slate-400">
+                  <p className="mb-4 mt-2 text-sm text-[#B6A18A]">
                     Revisa los movimientos realizados
-                    y descubre cómo evolucionó el tablero.
+                    y analiza las decisiones.
                   </p>
 
                   <button
                     type="button"
-                    onClick={handleOpenReview}
                     className="chess-button-gold w-full"
+                    onClick={handleOpenReview}
                   >
                     Revisar partida
                   </button>
                 </section>
               )}
-
-
             </aside>
           </div>
         )}
       </main>
-
-      {/* FOOTER */}
-      <footer className="mt-12 border-t border-amber-500/20 py-6 text-center">
-        <p className="m-0 text-xs text-slate-400">
-          ♛ Duelo de Inteligencias · Chess Experience
-        </p>
-      </footer>
     </div>
   );
 }
