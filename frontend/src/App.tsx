@@ -139,6 +139,20 @@ function App() {
               </div>
             </div>
 
+            {/* BOTÓN NUEVA PARTIDA DEBAJO DEL TABLERO */}
+            {game.status !== "finished" &&
+              game.status !== "incident" && (
+            <section className="mt-4 rounded-xl border border-[#59412A] bg-[#241A15] p-4 shadow-lg">
+            <button
+              type="button"
+              className="chess-button-gold w-full"
+              onClick={handleNewGame}
+              >
+                ♟ Nueva partida
+            </button>
+            </section>
+            )}
+
             {/* PANEL DERECHO */}
             <aside
               className="flex min-w-0 flex-col gap-4"
@@ -190,19 +204,6 @@ function App() {
                 </section>
               )}
 
-              {/* NUEVA PARTIDA */}
-              {game.status !== "finished" &&
-                game.status !== "incident" && (
-                  <section className="chess-panel">
-                    <button
-                      type="button"
-                      className="chess-button-secondary w-full"
-                      onClick={handleNewGame}
-                    >
-                      ♟ Nueva partida
-                    </button>
-                  </section>
-                )}
 
             </aside>
           </div>

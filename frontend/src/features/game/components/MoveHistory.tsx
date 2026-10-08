@@ -96,8 +96,7 @@ export function MoveHistory({
         )}
 
         {!error && moves.length > 0 && (
-          <ol className="m-0 flex max-h-80 list-none flex-col gap-2 overflow-y-auto p-0">
-            {moves.map((move, index) => {
+        <ol className="m-0 flex max-h-80 list-none flex-col gap-2 overflow-y-auto overscroll-contain p-0 pr-2 [scrollbar-color:#8A662F_#1B130F] [scrollbar-width:thin]">            {moves.map((move, index) => {
               const isLatest = index === moves.length - 1;
               const isWhite = move.color === "white";
 
