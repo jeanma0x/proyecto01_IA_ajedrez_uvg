@@ -73,6 +73,29 @@ export function getLegalMovesSan(fen: string): string[] {
   return new Chess(fen).moves();
 }
 
+export interface LegalMoveOption {
+  from: string;
+  to: string;
+  san: string;
+  promotion?: "q" | "r" | "b" | "n";
+}
+
+// Lista estructurada origen/destino (no solo SAN) para que el prompt de la IA
+// pida y valide en el mismo formato que exige la función de jugada
+// (from/to) — con solo SAN, el modelo no podía verificar su respuesta contra
+// la lista y repetía la misma jugada ilegal en cada reintento (bug real,
+// confirmado en producción 2026-10-09, ver docs/04-MODELOS_PENDIENTE.md).
+export function getLegalMovesDetailed(fen: string): LegalMoveOption[] {
+  return new Chess(fen)
+    .moves({ verbose: true })
+    .map((move) => ({
+      from: move.from,
+      to: move.to,
+      san: move.san,
+      ...(move.promotion ? { promotion: move.promotion as "q" | "r" | "b" | "n" } : {}),
+    }));
+}
+
 export function getTerminalState(fen: string): TerminalState {
   const chess = new Chess(fen);
 

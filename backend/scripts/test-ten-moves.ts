@@ -6,7 +6,7 @@ import { AnthropicAdapter } from "../lib/adapters/anthropic";
 import { OpenAiAdapter } from "../lib/adapters/openai";
 import { AdapterError } from "../lib/adapters/types";
 import type { AiAdapter } from "../lib/adapters/types";
-import { applyMove, createInitialFen, getLegalMovesSan, getTerminalState } from "../lib/chess/engine";
+import { applyMove, createInitialFen, getLegalMovesDetailed, getTerminalState } from "../lib/chess/engine";
 
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,7 +30,7 @@ async function runTenMoves(name: string, adapter: AiAdapter, moveCount = 10) {
   const MAX_INVALID_RETRIES = 2;
 
   for (let i = 1; i <= moveCount; i++) {
-    const legalMovesSan = getLegalMovesSan(fen);
+    const legalMoves = getLegalMovesDetailed(fen);
     let moveAccepted = false;
     let invalidRetries = 0;
     let attempts = 0;
@@ -43,7 +43,7 @@ async function runTenMoves(name: string, adapter: AiAdapter, moveCount = 10) {
           fen,
           color,
           difficulty: "beginner",
-          legalMovesSan,
+          legalMoves,
           recentSanHistory: [],
           timeoutMs: 15000,
         });
