@@ -72,5 +72,6 @@ export function buildPrompt(request: MoveRequest): string {
     `Movimientos legales disponibles (notación SAN): ${request.legalMovesSan.join(", ")}`,
     profile.instruction,
     `Responde únicamente llamando a la función "${MOVE_FUNCTION_NAME}" con tu jugada elegida.`,
+    ...(request.retryFeedback ? [request.retryFeedback] : []),
   ].join("\n");
 }

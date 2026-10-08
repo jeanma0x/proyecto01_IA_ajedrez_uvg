@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 
 import { DIFFICULTY_PROFILES, MOVE_FUNCTION_PARAMETERS, buildPrompt } from "./prompt";
 import { parseMoveArguments } from "./parse";
@@ -37,10 +37,23 @@ export class GoogleAdapter implements AiAdapter {
             maxOutputTokens: profile.maxOutputTokens,
             responseMimeType: "application/json",
             responseSchema: RESPONSE_SCHEMA,
+            // Sin esto, Gemini 3.x gasta buena parte de maxOutputTokens en
+            // "pensamiento" interno antes del JSON final, y la respuesta
+            // llega truncada a medias (bug real encontrado el 2026-10-08:
+            // ver docs/04-MODELOS_PENDIENTE.md). La tarea es elegir una
+            // jugada, no requiere razonamiento profundo.
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           },
         }),
         request.timeoutMs,
       );
+
+      if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+        throw new AdapterError(
+          "INVALID_FORMAT",
+          "La respuesta de Gemini se truncó por límite de tokens antes de completar el JSON.",
+        );
+      }
 
       rawText = response.text ?? "";
     } catch (error) {

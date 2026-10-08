@@ -104,6 +104,44 @@ de prueba tenía un bug — no reintentaba con el mismo jugador tras una jugada 
 real en producción ya hacía esto bien). Se corrigió `backend/scripts/test-ten-moves.ts` para igualar
 el comportamiento real de reintentos antes de repetir la prueba.
 
+## Actualización — 2026-10-08: todas las partidas terminaban en incidencia (3 bugs reales)
+
+Jorge (Frente 4) reportó que **todas** sus pruebas en el frontend desplegado terminaban en
+"incidencia técnica". Diagnóstico con los logs reales de `AiAttempt` en Neon — 3 causas distintas,
+una por proveedor, todas en el backend (no de los proveedores):
+
+1. **Gemini — respuestas JSON truncadas a medias** (`outcome: invalid_format`, raw cortado como
+   `{"from":"c6","to":"`). Gemini 3.x gasta tokens de "pensamiento" interno antes de emitir el JSON
+   final; con el `maxOutputTokens` configurado, el pensamiento se comía el presupuesto antes de
+   terminar la respuesta. **Fix:** `thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }` en
+   `lib/adapters/google.ts` — la tarea es elegir una jugada, no requiere razonamiento profundo.
+2. **Groq — error mal clasificado como fallo de servicio.** Cuando `gpt-oss` no llama a la función
+   (`tool_choice: "required"`), Groq responde `400 Tool choice is required, but model did not call
+   a tool` — pero el adaptador lo clasificaba como `UNAVAILABLE`, que va **directo a incidencia sin
+   reintentos** (RF-16). Debía ser `INVALID_FORMAT`, que sí reintenta (RF-15). **Fix:** `groq.ts`
+   ahora mapea status 400 a `INVALID_FORMAT`.
+3. **Sin estas correcciones, los reintentos reenviaban el prompt idéntico** — si el modelo fallaba,
+   tendía a repetir el mismo error exacto en el reintento (confirmado: Claude repitió la jugada
+   ilegal `c6→f6` tres veces seguidas, sin variación). **Fix:** se agregó `retryFeedback` al
+   contrato del adaptador (`MoveRequest.retryFeedback`) — en cada reintento, el prompt ahora incluye
+   qué falló en el intento anterior y una instrucción explícita de no repetirlo.
+
+**Resultado tras los 3 fixes** (prueba real de 10 movimientos, `backend/scripts/test-ten-moves.ts`):
+
+| Modelo | Antes del fix | Después del fix |
+| --- | --- | --- |
+| Google Gemini | 1/10 (cuota) → 10/10 (ya con pago) | **10/10**, sin cambios de comportamiento |
+| OpenAI `gpt-oss` vía Groq | Incidencia por error 400 mal clasificado | **10/10** — se vio en vivo: una jugada fue rechazada, reintentó, y la segunda sí fue válida |
+| Anthropic Claude Haiku | Incidencia, repetía la misma jugada ilegal | **9/10** — mejoró (ya no repite literal en la mayoría de los casos), pero en una posición de jaque complicada volvió a elegir la misma jugada geométricamente imposible pese al feedback. **No es un bug de código** — es una limitación real del modelo más económico de Claude (Haiku) en posiciones de jaque difíciles. El sistema de incidencia funcionó como debía: cortó limpio en vez de corromper el tablero (RN-08/RN-09) |
+
+**Nota honesta para la presentación:** con esto, la mayoría de las partidas deberían completarse
+sin incidencia, pero **sigue siendo posible** que una IA (sobre todo Claude Haiku, el modelo más
+barato) falle genuinamente en una posición difícil y la partida termine como incidencia técnica —
+eso es el comportamiento *correcto* del sistema, no una falla a ocultar. Si se quiere reducir aún
+más esta probabilidad, la opción sería usar un modelo Claude más capaz (Sonnet) para los niveles
+"avanzado"/"maestro", a costa de más presupuesto — no implementado todavía, queda como posible
+ajuste fino si da tiempo antes del 9 de octubre.
+
 **Estado consolidado de los 3 modelos (final):**
 
 | Modelo | Estado | Vía | Costo |
