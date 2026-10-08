@@ -109,7 +109,8 @@ function App() {
               />
 
               {/* BOTÓN PARA REVISAR PARTIDA */}
-              {game.status === "finished" && (
+              {(game.status === "finished" ||
+                game.status === "incident") && (
                 <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
                   <div className="mb-3">
                     <h2 className="m-0 text-base font-bold text-slate-900">
