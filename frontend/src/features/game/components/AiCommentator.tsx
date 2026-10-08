@@ -11,6 +11,7 @@ interface AiCommentatorProps {
 }
 
 type NarratorStyle = "deportivo" | "profesional" | "epico";
+
 type MoveCategory =
   | "normal"
   | "development"
@@ -22,6 +23,8 @@ type MoveCategory =
   | "promotion"
   | "final"
   | "incident";
+
+type AiStatus = "idle" | "generating" | "success" | "error";
 
 interface Commentary {
   id: number;
@@ -39,7 +42,17 @@ interface Narration {
   category: MoveCategory;
 }
 
+interface PendingAiRequest {
+  gameId: string;
+  moveNumber: number;
+  fen: string;
+  from: string;
+  to: string;
+  category: MoveCategory;
+}
+
 const MAX_COMMENTS = 8;
+const AI_REQUEST_TIMEOUT = 12000;
 
 const NOTABLE_CATEGORIES: MoveCategory[] = [
   "capture",
@@ -244,7 +257,6 @@ const PHRASES: Record<
       "¡El enfrentamiento ha quedado detenido!",
     ],
   },
-
   profesional: {
     normal: [
       "{player} desplaza su {piece} hacia {to}.",
@@ -301,7 +313,6 @@ const PHRASES: Record<
       "Se ha registrado una interrupción del servicio.",
     ],
   },
-
   epico: {
     normal: [
       "¡{player} mueve su {piece} hacia {to}!",
@@ -524,6 +535,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1.25);
 
+  const [aiStatus, setAiStatus] = useState<AiStatus>("idle");
+  const [aiStatusMove, setAiStatusMove] = useState<number | null>(null);
+
   const latestGameRef = useRef(game);
   const movesRef = useRef(moves);
 
@@ -551,6 +565,18 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   });
 
   const playLatestRef = useRef<() => void>(() => {});
+
+  // Control de concurrencia de Groq.
+  const aiBusyRef = useRef(false);
+
+  const pendingAiRequestRef =
+    useRef<PendingAiRequest | null>(null);
+
+  const aiRequestVersionRef = useRef(0);
+
+  // Una solicitud HTTP no se considera terminada
+  // hasta que su promesa se resuelve o rechaza.
+  const activeAiPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     latestGameRef.current = game;
@@ -709,6 +735,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       mountedRef.current = false;
       sessionRef.current += 1;
       speakingRef.current = false;
+      aiRequestVersionRef.current += 1;
+      pendingAiRequestRef.current = null;
 
       if (activeUtteranceRef.current) {
         activeUtteranceRef.current.onend = null;
@@ -764,7 +792,159 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     };
   }, []);
 
-  // Reiniciar el comentarista al cambiar de partida.
+  // ==========================================
+  // COLA INTELIGENTE DE GROQ
+  // ==========================================
+
+  const processAiRequest = useCallback(
+    (request: PendingAiRequest) => {
+      // Mientras hay una solicitud activa, guardar
+      // solamente la jugada importante más reciente.
+      if (aiBusyRef.current) {
+        pendingAiRequestRef.current = request;
+        return;
+      }
+
+      aiBusyRef.current = true;
+
+      const version = aiRequestVersionRef.current;
+
+      const processQueue = async () => {
+        let currentRequest: PendingAiRequest | null = request;
+
+        try {
+          while (
+            currentRequest &&
+            mountedRef.current &&
+            version === aiRequestVersionRef.current
+          ) {
+            const activeRequest: PendingAiRequest = currentRequest;
+
+            if (activeRequest.gameId !== gameIdRef.current) {
+              break;
+            }
+
+            setAiStatus("generating");
+            setAiStatusMove(activeRequest.moveNumber);
+
+            try {
+              // El timeout limita la espera visual, pero
+              // no cancela la solicitud HTTP del backend.
+              let timeoutId: number | undefined;
+
+              const timeoutPromise = new Promise<never>(
+                (_, reject) => {
+                  timeoutId = window.setTimeout(() => {
+                    reject(
+                      new Error(
+                        "Groq tardó demasiado en responder.",
+                      ),
+                    );
+                  }, AI_REQUEST_TIMEOUT);
+                },
+              );
+
+              const httpPromise = requestAiCommentary(
+                activeRequest.gameId,
+                {
+                  fen: activeRequest.fen,
+                  moveNumber: activeRequest.moveNumber,
+                  lastMove: {
+                    from: activeRequest.from,
+                    to: activeRequest.to,
+                  },
+                },
+              );
+
+              // Esperar el resultado o el timeout.
+              // Si ocurre timeout, esperar además el fin
+              // real de HTTP antes de iniciar otra petición.
+              let response: Awaited<typeof httpPromise>;
+
+              try {
+                response = await Promise.race([
+                  httpPromise,
+                  timeoutPromise,
+                ]);
+              } catch (error) {
+                await httpPromise.catch(() => undefined);
+                throw error;
+              } finally {
+                if (timeoutId !== undefined) {
+                  window.clearTimeout(timeoutId);
+                }
+              }
+
+              if (
+                !mountedRef.current ||
+                version !== aiRequestVersionRef.current ||
+                activeRequest.gameId !== gameIdRef.current
+              ) {
+                break;
+              }
+
+              const text = response.commentary?.trim();
+
+              if (!text) {
+                throw new Error(
+                  "Groq devolvió un comentario vacío.",
+                );
+              }
+
+              setComments((current) =>
+                current.map((comment) =>
+                  comment.moveNumber === activeRequest.moveNumber
+                    ? {
+                        ...comment,
+                        message: text,
+                        source: "ai",
+                        category: activeRequest.category,
+                      }
+                    : comment,
+                ),
+              );
+
+              setAiStatus("success");
+              setAiStatusMove(activeRequest.moveNumber);
+            } catch (error) {
+              if (
+                !mountedRef.current ||
+                version !== aiRequestVersionRef.current
+              ) {
+                break;
+              }
+
+              console.warn(
+                "[AiCommentator] Groq no disponible:",
+                error,
+              );
+
+              setAiStatus("error");
+              setAiStatusMove(activeRequest.moveNumber);
+            }
+
+            // Solo conservar la última jugada pendiente.
+            currentRequest = pendingAiRequestRef.current;
+            pendingAiRequestRef.current = null;
+          }
+        } finally {
+          aiBusyRef.current = false;
+          activeAiPromiseRef.current = null;
+        }
+      };
+
+      const operation = processQueue();
+      activeAiPromiseRef.current = operation;
+
+      void operation;
+    },
+    [],
+  );
+
+  // ==========================================
+  // REINICIAR AL CAMBIAR DE PARTIDA
+  // ==========================================
+
   useEffect(() => {
     if (gameIdRef.current === game.id) return;
 
@@ -777,11 +957,19 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     recentExpressionsRef.current = [];
     requestedAiMovesRef.current.clear();
 
+    aiRequestVersionRef.current += 1;
+    pendingAiRequestRef.current = null;
+
     setComments([]);
     setMoves([]);
+    setAiStatus("idle");
+    setAiStatusMove(null);
   }, [game.id, game.moveCount, stopSpeaking]);
 
-  // Consultar el historial de movimientos.
+  // ==========================================
+  // CONSULTAR HISTORIAL
+  // ==========================================
+
   useEffect(() => {
     let cancelled = false;
 
@@ -809,7 +997,10 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     };
   }, [game.id, game.moveCount]);
 
-  // Mostrar inmediatamente el comentario local.
+  // ==========================================
+  // COMENTARIO LOCAL INMEDIATO
+  // ==========================================
+
   useEffect(() => {
     if (game.moveCount <= previousMoveCountRef.current) {
       previousMoveCountRef.current = game.moveCount;
@@ -841,7 +1032,10 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     playLatest();
   }, [game, playLatest]);
 
-  // Consultar Groq solo en jugadas notables.
+  // ==========================================
+  // DETECTAR JUGADAS IMPORTANTES PARA GROQ
+  // ==========================================
+
   useEffect(() => {
     if (!game.lastMove) return;
 
@@ -853,7 +1047,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
     const category = getMoveCategory(move, game);
 
-    if (!NOTABLE_CATEGORIES.includes(category)) return;
+    if (!NOTABLE_CATEGORIES.includes(category)) {
+      return;
+    }
 
     if (requestedAiMovesRef.current.has(game.moveCount)) {
       return;
@@ -861,45 +1057,17 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
     requestedAiMovesRef.current.add(game.moveCount);
 
-    const requestedGameId = game.id;
-    const requestedMoveNumber = game.moveCount;
-
-    void requestAiCommentary(game.id, {
-      fen: game.fen,
+    const request: PendingAiRequest = {
+      gameId: game.id,
       moveNumber: game.moveCount,
-      lastMove: {
-        from: game.lastMove.from,
-        to: game.lastMove.to,
-      },
-    })
-      .then((response) => {
-        if (!mountedRef.current) return;
-        if (gameIdRef.current !== requestedGameId) return;
+      fen: game.fen,
+      from: game.lastMove.from,
+      to: game.lastMove.to,
+      category,
+    };
 
-        const aiText = response.commentary?.trim();
-
-        if (!aiText) return;
-
-        setComments((current) =>
-          current.map((comment) =>
-            comment.moveNumber === requestedMoveNumber
-              ? {
-                  ...comment,
-                  message: aiText,
-                  source: "ai",
-                  category,
-                }
-              : comment,
-          ),
-        );
-      })
-      .catch((error: unknown) => {
-        console.warn(
-          "[AiCommentator] Groq no disponible:",
-          error,
-        );
-      });
-  }, [game, moves]);
+    processAiRequest(request);
+  }, [game, moves, processAiRequest]);
 
   function toggleVoice() {
     const next = !voiceEnabled;
@@ -926,6 +1094,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   return (
     <section className="overflow-hidden rounded-xl border border-[#59412A] bg-[#241A15] text-[#EADFCF] shadow-xl">
+
+      {/* ENCABEZADO */}
       <div className="border-b border-[#59412A] bg-[#302218] px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -945,6 +1115,48 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         </div>
       </div>
 
+      {/* ESTADO DE GROQ */}
+      <div className="border-b border-[#493522] bg-[#241A15] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="m-0 text-xs font-bold text-[#E8B84B]">
+              ✨ Motor de comentarios Groq
+            </p>
+
+            <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
+              {aiStatus === "generating"
+                ? `Analizando movimiento ${aiStatusMove ?? ""} con IA...`
+                : aiStatus === "success"
+                  ? "Último comentario IA recibido correctamente."
+                  : aiStatus === "error"
+                    ? "Groq no disponible. Narración local activa."
+                    : "Narración local lista. IA para jugadas importantes."}
+            </p>
+          </div>
+
+          <span
+            className={
+              aiStatus === "success"
+                ? "rounded-full border border-emerald-700 bg-emerald-950/50 px-3 py-1 text-xs font-bold text-emerald-400"
+                : aiStatus === "generating"
+                  ? "rounded-full border border-blue-700 bg-blue-950/50 px-3 py-1 text-xs font-bold text-blue-300"
+                  : aiStatus === "error"
+                    ? "rounded-full border border-amber-700 bg-amber-950/50 px-3 py-1 text-xs font-bold text-amber-300"
+                    : "rounded-full border border-[#75572A] bg-[#362718] px-3 py-1 text-xs font-bold text-[#F5D782]"
+            }
+          >
+            {aiStatus === "success"
+              ? "✓ IA ACTIVA"
+              : aiStatus === "generating"
+                ? "◌ GENERANDO"
+                : aiStatus === "error"
+                  ? "RESPALDO LOCAL"
+                  : "EN ESPERA"}
+          </span>
+        </div>
+      </div>
+
+      {/* CONTROLES DE VOZ */}
       <div className="border-b border-[#493522] bg-[#2B1E17] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -1055,6 +1267,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         )}
       </div>
 
+      {/* NARRACIÓN ACTUAL */}
       {isSpeaking && currentNarration && (
         <div className="border-b border-[#75572A] bg-[#3A2A1B] p-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -1076,12 +1289,11 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         </div>
       )}
 
+      {/* HISTORIAL */}
       <div className="max-h-80 overflow-y-auto overscroll-contain p-4">
         {comments.length === 0 ? (
           <div className="py-7 text-center">
-            <div className="mb-3 text-4xl text-[#E8B84B]">
-              ♟
-            </div>
+            <div className="mb-3 text-4xl text-[#E8B84B]">♟</div>
             <p className="m-0 font-semibold text-[#F0DFBF]">
               Esperando el primer movimiento
             </p>
