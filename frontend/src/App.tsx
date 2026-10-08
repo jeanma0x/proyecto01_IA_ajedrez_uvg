@@ -1,11 +1,13 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { BarChart3, Crown, LayoutGrid, Loader2, Plus } from "lucide-react";
 import "./App.css";
 
 import { ChessBoard } from "./components/chess/ChessBoard";
 import { GameConfiguration } from "./features/game/components/GameConfiguration";
 import { GameControls } from "./features/game/components/GameControls";
 import { GameResult } from "./features/game/components/GameResult";
+import { GameResultModal } from "./features/game/components/GameResultModal";
 import { MoveHistory } from "./features/game/components/MoveHistory";
 import { AiCommentator } from "./features/game/components/AiCommentator";
 import { GameReview } from "./features/analysis/components/GameReview";
@@ -32,6 +34,13 @@ function App() {
 
   const [showNewGameConfirm, setShowNewGameConfirm] =
     useState(false);
+
+  const [showResultModal, setShowResultModal] = useState(false);
+
+  // Guarda el status anterior de la partida para detectar la transición
+  // "activa -> finalizada" en vivo, sin disparar el modal cuando se restaura
+  // una partida que ya estaba finalizada (ej. al refrescar la página).
+  const previousStatusRef = useRef<GameState["status"] | null>(null);
 
   // RESTAURAR PARTIDA GUARDADA
   useEffect(() => {
@@ -69,8 +78,37 @@ function App() {
     }
   }, [game]);
 
+  // Reinicia la referencia de status cada vez que cambia de partida, para
+  // que la detección de "recién finalizada" parta de un estado limpio.
+  useEffect(() => {
+    previousStatusRef.current = null;
+  }, [game?.id]);
+
+  // DETECTAR TRANSICIÓN A PARTIDA FINALIZADA (para el modal de resultado)
+  useEffect(() => {
+    if (!game) {
+      return;
+    }
+
+    const previousStatus = previousStatusRef.current;
+    const isNowFinished =
+      game.status === "finished" || game.status === "incident";
+    const wasActive =
+      previousStatus === "active" || previousStatus === "paused";
+
+    if (previousStatus !== null && wasActive && isNowFinished) {
+      setShowResultModal(true);
+    }
+
+    previousStatusRef.current = game.status;
+    // Solo debe re-evaluarse cuando cambia la identidad de la partida o su
+    // status — no en cada actualización de movimiento/turno/fen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.id, game?.status]);
+
   function handleNewGame() {
     setShowNewGameConfirm(false);
+    setShowResultModal(false);
     setIsReviewing(false);
     setIsViewingStatistics(false);
     setGame(null);
@@ -97,6 +135,15 @@ function App() {
     setIsViewingStatistics(false);
   }
 
+  function handleCloseResultModal() {
+    setShowResultModal(false);
+  }
+
+  function handleReviewFromModal() {
+    setShowResultModal(false);
+    handleOpenReview();
+  }
+
   const isGameFinished =
     game?.status === "finished" ||
     game?.status === "incident";
@@ -111,10 +158,10 @@ function App() {
           {/* LOGO Y TÍTULO */}
           <div className="flex items-center gap-3">
             <div
-              className="chess-logo"
+              className="chess-logo flex items-center justify-center"
               aria-hidden="true"
             >
-              ♛
+              <Crown className="h-6 w-6" />
             </div>
 
             <div>
@@ -132,7 +179,7 @@ function App() {
           <div className="flex flex-wrap items-center gap-3">
 
             <span className="chess-tag">
-              ♟ AI CHESS
+              AI CHESS
             </span>
 
             <button
@@ -144,13 +191,21 @@ function App() {
               }
               className={
                 isViewingStatistics
-                  ? "rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-2 text-sm font-bold text-[#211712] transition hover:bg-[#F5D782]"
-                  : "rounded-lg border border-[#E8B84B] bg-[#362718] px-4 py-2 text-sm font-bold text-[#E8B84B] transition hover:bg-[#49331E]"
+                  ? "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-2 text-sm font-bold text-[#211712] transition hover:bg-[#F5D782]"
+                  : "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#E8B84B] bg-[#362718] px-4 py-2 text-sm font-bold text-[#E8B84B] transition hover:bg-[#49331E]"
               }
             >
-              {isViewingStatistics
-                ? "♟ Volver al juego"
-                : "📊 Estadísticas"}
+              {isViewingStatistics ? (
+                <>
+                  <Crown className="h-4 w-4" aria-hidden="true" />
+                  Volver al juego
+                </>
+              ) : (
+                <>
+                  <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                  Estadísticas
+                </>
+              )}
             </button>
 
           </div>
@@ -163,9 +218,7 @@ function App() {
         {/* VISTA DE ESTADÍSTICAS */}
         {isViewingStatistics && (
           <div className="mx-auto max-w-7xl">
-            <StatisticsView
-              onClose={handleCloseStatistics}
-            />
+            <StatisticsView />
           </div>
         )}
 
@@ -173,10 +226,11 @@ function App() {
         {!isViewingStatistics &&
           !game &&
           isRestoringGame && (
-            <div className="mx-auto w-full max-w-3xl text-center">
-              <p className="text-sm text-[#B6A18A]">
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <div className="flex items-center gap-3 text-sm text-[#B6A18A]">
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
                 Cargando tu partida...
-              </p>
+              </div>
             </div>
           )}
 
@@ -184,28 +238,31 @@ function App() {
         {!isViewingStatistics &&
           !game &&
           !isRestoringGame && (
-            <div className="mx-auto w-full max-w-3xl">
+            <div className="flex min-h-[70vh] items-center justify-center">
+              <div className="mx-auto w-full max-w-3xl">
 
-              <div className="mb-5 text-center">
-                <h2 className="chess-title text-2xl font-bold">
-                  ♛ El desafío comienza aquí
-                </h2>
+                <div className="mb-5 text-center">
+                  <h2 className="chess-title flex items-center justify-center gap-2 text-2xl font-bold">
+                    <Crown className="h-6 w-6" aria-hidden="true" />
+                    El desafío comienza aquí
+                  </h2>
 
-                <p className="mt-2 text-sm text-[#B6A18A]">
-                  Configura los participantes y comienza tu partida.
-                </p>
+                  <p className="mt-2 text-sm text-[#B6A18A]">
+                    Configura los participantes y comienza tu partida.
+                  </p>
+                </div>
+
+                <div className="chess-panel">
+                  <GameConfiguration
+                    onGameCreated={(createdGame) => {
+                      setGame(createdGame);
+                      setIsReviewing(false);
+                      setIsViewingStatistics(false);
+                    }}
+                  />
+                </div>
+
               </div>
-
-              <div className="chess-panel">
-                <GameConfiguration
-                  onGameCreated={(createdGame) => {
-                    setGame(createdGame);
-                    setIsReviewing(false);
-                    setIsViewingStatistics(false);
-                  }}
-                />
-              </div>
-
             </div>
           )}
 
@@ -214,22 +271,10 @@ function App() {
           game &&
           isReviewing && (
             <div className="mx-auto max-w-6xl">
-
-              <div className="mb-5">
-                <h2 className="chess-title text-2xl font-bold">
-                  ♛ Análisis de partida
-                </h2>
-
-                <p className="mt-2 text-sm text-[#B6A18A]">
-                  Revisa los movimientos de la partida.
-                </p>
-              </div>
-
               <GameReview
                 game={game}
                 onClose={handleCloseReview}
               />
-
             </div>
           )}
 
@@ -244,8 +289,9 @@ function App() {
 
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
 
-                  <h2 className="chess-panel-title">
-                    ♟ Tablero de juego
+                  <h2 className="chess-panel-title flex items-center gap-2">
+                    <LayoutGrid className="h-5 w-5" aria-hidden="true" />
+                    Tablero de juego
                   </h2>
 
                   <span className="chess-tag">
@@ -273,10 +319,11 @@ function App() {
                   <div className="chess-new-game">
                     <button
                       type="button"
-                      className="chess-button-gold w-full"
+                      className="chess-button-gold flex w-full items-center justify-center gap-2"
                       onClick={handleRequestNewGame}
                     >
-                      ♟ Nueva partida
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      Nueva partida
                     </button>
                   </div>
                 )}
@@ -289,22 +336,8 @@ function App() {
                 aria-label="Información y controles de la partida"
               >
 
-                {/* CONTROLES */}
-                <GameControls
-                  game={game}
-                  onGameChange={setGame}
-                />
-
-                {/* COMENTARISTA IA */}
-                <AiCommentator game={game} />
-
-                {/* HISTORIAL DE MOVIMIENTOS */}
-                <MoveHistory
-                  gameId={game.id}
-                  moveCount={game.moveCount}
-                />
-
-                {/* RESULTADO */}
+                {/* RESULTADO — primero en la columna cuando la partida ya
+                    terminó (no renderiza nada mientras sigue activa) */}
                 <div className="chess-result-theme">
                   <GameResult
                     game={game}
@@ -312,12 +345,28 @@ function App() {
                   />
                 </div>
 
+                {/* CONTROLES */}
+                <GameControls
+                  game={game}
+                  onGameChange={setGame}
+                />
+
+                {/* HISTORIAL DE MOVIMIENTOS */}
+                <MoveHistory
+                  gameId={game.id}
+                  moveCount={game.moveCount}
+                />
+
+                {/* COMENTARISTA IA */}
+                <AiCommentator game={game} />
+
                 {/* ANÁLISIS */}
                 {isGameFinished && (
                   <section className="chess-panel">
 
-                    <h2 className="chess-panel-title">
-                      ♛ Análisis de partida
+                    <h2 className="chess-panel-title flex items-center gap-2">
+                      <Crown className="h-5 w-5" aria-hidden="true" />
+                      Análisis de partida
                     </h2>
 
                     <p className="mb-4 mt-2 text-sm text-[#B6A18A]">
@@ -340,6 +389,16 @@ function App() {
             </div>
           )}
       </main>
+
+      {/* MODAL DE RESULTADO — aviso inmediato al terminar la partida */}
+      {showResultModal && game && (
+        <GameResultModal
+          game={game}
+          onClose={handleCloseResultModal}
+          onReview={handleReviewFromModal}
+          onNewGame={handleNewGame}
+        />
+      )}
 
       {/* CONFIRMACIÓN DE NUEVA PARTIDA */}
       {showNewGameConfirm && (

@@ -1,6 +1,8 @@
 
 import { useEffect, useState } from "react";
 
+import { History, Swords } from "lucide-react";
+
 import { ApiClientError } from "../../../services/api/apiClient";
 import { getMoves } from "../../../services/api/gameApi";
 
@@ -53,8 +55,9 @@ export function MoveHistory({
       {/* ENCABEZADO */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#493522] bg-[#302218] px-5 py-4">
         <div>
-          <h2 className="m-0 text-lg font-bold text-[#E8B84B]">
-            ♟ Historial de movimientos
+          <h2 className="m-0 flex items-center gap-2 text-lg font-bold text-[#E8B84B]">
+            <History className="h-5 w-5" aria-hidden="true" />
+            Historial de movimientos
           </h2>
 
           <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
@@ -80,8 +83,8 @@ export function MoveHistory({
 
         {!error && moves.length === 0 && (
           <div className="py-7 text-center">
-            <div className="mb-3 text-4xl text-[#E8B84B]">
-              ♟
+            <div className="mb-3 flex justify-center text-[#E8B84B]">
+              <Swords className="h-9 w-9" aria-hidden="true" />
             </div>
 
             <p className="m-0 font-semibold text-[#F0DFBF]">
@@ -117,7 +120,7 @@ export function MoveHistory({
 
                       <div>
                         <span className="block text-xs font-medium text-[#B6A18A]">
-                          {isWhite ? "♙ Blancas" : "♟ Negras"}
+                          {isWhite ? "Blancas" : "Negras"}
                         </span>
 
                         <strong className="mt-1 block text-base text-[#F0DFBF]">

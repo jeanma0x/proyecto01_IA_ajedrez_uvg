@@ -1,6 +1,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Check,
+  ChevronDown,
+  Loader2,
+  Mic,
+  Settings2,
+  Sparkles,
+  Swords,
+  Volume2,
+} from "lucide-react";
+import {
   getMoves,
   requestAiCommentary,
 } from "../../../services/api/gameApi";
@@ -329,6 +339,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     useState<NarratorStyle>("deportivo");
 
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState("");
   const [speechRate, setSpeechRate] = useState(1.25);
@@ -814,8 +825,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       <div className="border-b border-[#59412A] bg-[#302218] px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="m-0 text-lg font-bold text-[#E8B84B]">
-              🎙 Comentarista IA
+            <h2 className="m-0 flex items-center gap-2 text-lg font-bold text-[#E8B84B]">
+              <Mic className="h-5 w-5" aria-hidden="true" />
+              Comentarista IA
             </h2>
 
             <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
@@ -835,8 +847,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       <div className="border-b border-[#493522] bg-[#241A15] px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="m-0 text-xs font-bold text-[#E8B84B]">
-              ✨ Motor de comentarios Groq
+            <p className="m-0 flex items-center gap-2 text-xs font-bold text-[#E8B84B]">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              Motor de comentarios Groq
             </p>
 
             <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
@@ -853,21 +866,29 @@ export function AiCommentator({ game }: AiCommentatorProps) {
           <span
             className={
               aiStatus === "success"
-                ? "rounded-full border border-emerald-700 bg-emerald-950/50 px-3 py-1 text-xs font-bold text-emerald-400"
+                ? "flex items-center gap-1.5 rounded-full border border-emerald-700 bg-emerald-950/50 px-3 py-1 text-xs font-bold text-emerald-400"
                 : aiStatus === "generating"
-                  ? "rounded-full border border-blue-700 bg-blue-950/50 px-3 py-1 text-xs font-bold text-blue-300"
+                  ? "flex items-center gap-1.5 rounded-full border border-blue-700 bg-blue-950/50 px-3 py-1 text-xs font-bold text-blue-300"
                   : aiStatus === "error"
-                    ? "rounded-full border border-amber-700 bg-amber-950/50 px-3 py-1 text-xs font-bold text-amber-300"
-                    : "rounded-full border border-[#75572A] bg-[#362718] px-3 py-1 text-xs font-bold text-[#F5D782]"
+                    ? "flex items-center gap-1.5 rounded-full border border-amber-700 bg-amber-950/50 px-3 py-1 text-xs font-bold text-amber-300"
+                    : "flex items-center gap-1.5 rounded-full border border-[#75572A] bg-[#362718] px-3 py-1 text-xs font-bold text-[#F5D782]"
             }
           >
-            {aiStatus === "success"
-              ? "✓ IA ACTIVA"
-              : aiStatus === "generating"
-                ? "◌ GENERANDO"
-                : aiStatus === "error"
-                  ? "RESPALDO LOCAL"
-                  : "EN ESPERA"}
+            {aiStatus === "success" ? (
+              <>
+                <Check className="h-3 w-3" aria-hidden="true" />
+                IA ACTIVA
+              </>
+            ) : aiStatus === "generating" ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                GENERANDO
+              </>
+            ) : aiStatus === "error" ? (
+              "RESPALDO LOCAL"
+            ) : (
+              "EN ESPERA"
+            )}
           </span>
         </div>
       </div>
@@ -876,8 +897,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       <div className="border-b border-[#493522] bg-[#2B1E17] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="m-0 text-sm font-semibold text-[#F0DFBF]">
-              🔊 Narración por voz
+            <p className="m-0 flex items-center gap-2 text-sm font-semibold text-[#F0DFBF]">
+              <Volume2 className="h-4 w-4" aria-hidden="true" />
+              Narración por voz
             </p>
 
             <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
@@ -895,99 +917,126 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             aria-pressed={voiceEnabled}
             className={
               voiceEnabled
-                ? "rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-2 text-xs font-bold text-[#211712] transition hover:bg-[#F5D782]"
-                : "rounded-lg border border-[#75572A] bg-[#362718] px-4 py-2 text-xs font-bold text-[#B6A18A] transition hover:bg-[#49331E]"
+                ? "flex min-h-11 items-center gap-2 rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-2 text-xs font-bold text-[#211712] transition hover:bg-[#F5D782]"
+                : "flex min-h-11 items-center gap-2 rounded-lg border border-[#75572A] bg-[#362718] px-4 py-2 text-xs font-bold text-[#B6A18A] transition hover:bg-[#49331E]"
             }
           >
-            {voiceEnabled ? "● VOZ ON" : "○ VOZ OFF"}
+            <span aria-hidden="true">{voiceEnabled ? "●" : "○"}</span>
+            {voiceEnabled ? "VOZ ON" : "VOZ OFF"}
           </button>
         </div>
 
-        <div className="mt-4">
-          <label
-            htmlFor="narrator-style"
-            className="mb-2 block text-xs font-semibold text-[#D9C5A7]"
-          >
-            Personalidad del narrador
-          </label>
+        {/* CONFIGURAR VOZ (colapsado por defecto) */}
+        <button
+          type="button"
+          onClick={() => setShowVoiceSettings((current) => !current)}
+          aria-expanded={showVoiceSettings}
+          className="mt-4 flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border border-[#493522] bg-[#1B130F] px-3 py-2 text-xs font-semibold text-[#D9C5A7] transition hover:border-[#75572A]"
+        >
+          <span className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" aria-hidden="true" />
+            Configurar voz
+          </span>
 
-          <select
-            id="narrator-style"
-            value={narratorStyle}
-            onChange={(event) =>
-              setNarratorStyle(event.target.value as NarratorStyle)
+          <ChevronDown
+            className={
+              showVoiceSettings
+                ? "h-4 w-4 rotate-180 transition-transform"
+                : "h-4 w-4 transition-transform"
             }
-            className="w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF]"
-          >
-            <option value="deportivo">
-              ⚽ Deportivo — Emocionante
-            </option>
-            <option value="profesional">
-              ♟ Profesional — Analítico
-            </option>
-            <option value="epico">
-              🔥 Épico — Dramático
-            </option>
-          </select>
-        </div>
+            aria-hidden="true"
+          />
+        </button>
 
-        {voiceEnabled && (
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {showVoiceSettings && (
+          <div className="mt-3">
             <div>
               <label
-                htmlFor="commentator-voice"
+                htmlFor="narrator-style"
                 className="mb-2 block text-xs font-semibold text-[#D9C5A7]"
               >
-                Voz del comentarista
+                Personalidad del narrador
               </label>
 
               <select
-                id="commentator-voice"
-                value={selectedVoice}
+                id="narrator-style"
+                value={narratorStyle}
                 onChange={(event) =>
-                  setSelectedVoice(event.target.value)
+                  setNarratorStyle(event.target.value as NarratorStyle)
                 }
-                className="w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF]"
+                className="min-h-11 w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF]"
               >
-                {spanishVoices.length === 0 ? (
-                  <option value="">
-                    Voz predeterminada
-                  </option>
-                ) : (
-                  spanishVoices.map((voice) => (
-                    <option
-                      key={voice.voiceURI}
-                      value={voice.voiceURI}
-                    >
-                      {voice.name} ({voice.lang})
-                    </option>
-                  ))
-                )}
+                <option value="deportivo">
+                  Deportivo — Emocionante
+                </option>
+                <option value="profesional">
+                  Profesional — Analítico
+                </option>
+                <option value="epico">
+                  Épico — Dramático
+                </option>
               </select>
             </div>
 
-            <div>
-              <label
-                htmlFor="commentator-speed"
-                className="mb-2 block text-xs font-semibold text-[#D9C5A7]"
-              >
-                Ritmo de narración
-              </label>
+            {voiceEnabled && (
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="commentator-voice"
+                    className="mb-2 block text-xs font-semibold text-[#D9C5A7]"
+                  >
+                    Voz del comentarista
+                  </label>
 
-              <select
-                id="commentator-speed"
-                value={speechRate}
-                onChange={(event) =>
-                  setSpeechRate(Number(event.target.value))
-                }
-                className="w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF]"
-              >
-                <option value={1}>Tranquila</option>
-                <option value={1.15}>Natural</option>
-                <option value={1.25}>Dinámica</option>
-                <option value={1.4}>Rápida</option>
-              </select>
-            </div>
+                  <select
+                    id="commentator-voice"
+                    value={selectedVoice}
+                    onChange={(event) =>
+                      setSelectedVoice(event.target.value)
+                    }
+                    className="min-h-11 w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF]"
+                  >
+                    {spanishVoices.length === 0 ? (
+                      <option value="">
+                        Voz predeterminada
+                      </option>
+                    ) : (
+                      spanishVoices.map((voice) => (
+                        <option
+                          key={voice.voiceURI}
+                          value={voice.voiceURI}
+                        >
+                          {voice.name} ({voice.lang})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="commentator-speed"
+                    className="mb-2 block text-xs font-semibold text-[#D9C5A7]"
+                  >
+                    Ritmo de narración
+                  </label>
+
+                  <select
+                    id="commentator-speed"
+                    value={speechRate}
+                    onChange={(event) =>
+                      setSpeechRate(Number(event.target.value))
+                    }
+                    className="min-h-11 w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF]"
+                  >
+                    <option value={1}>Tranquila</option>
+                    <option value={1.15}>Natural</option>
+                    <option value={1.25}>Dinámica</option>
+                    <option value={1.4}>Rápida</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -996,8 +1045,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       {currentNarration && (
         <div className="border-b border-[#75572A] bg-[#3A2A1B] p-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs font-bold uppercase tracking-wide text-[#E8B84B]">
-              🔊 Narrando ahora · Movimiento{" "}
+            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#E8B84B]">
+              <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Narrando ahora · Movimiento{" "}
               {currentNarration.moveNumber}
             </span>
 
@@ -1020,8 +1070,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       <div className="max-h-80 overflow-y-auto overscroll-contain p-4">
         {comments.length === 0 ? (
           <div className="py-7 text-center">
-            <div className="mb-3 text-4xl text-[#E8B84B]">
-              ♟
+            <div className="mb-3 flex justify-center text-[#E8B84B]">
+              <Swords className="h-9 w-9" aria-hidden="true" />
             </div>
 
             <p className="m-0 font-semibold text-[#F0DFBF]">
@@ -1059,8 +1109,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                   </span>
 
                   {comment.source === "ai" && (
-                    <span className="rounded-md border border-purple-500/40 bg-purple-950/40 px-2 py-1 text-[10px] font-bold text-purple-300">
-                      ✨ IA
+                    <span className="flex items-center gap-1 rounded-md border border-purple-500/40 bg-purple-950/40 px-2 py-1 text-[10px] font-bold text-purple-300">
+                      <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
+                      IA
                     </span>
                   )}
                 </div>
@@ -1083,9 +1134,10 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                   <button
                     type="button"
                     onClick={() => listenManually(comment)}
-                    className="rounded-lg border border-[#75572A] bg-[#49331E] px-4 py-2 text-xs font-semibold text-[#F5D782] transition hover:bg-[#624529]"
+                    className="flex min-h-11 items-center gap-2 rounded-lg border border-[#75572A] bg-[#49331E] px-4 py-2 text-xs font-semibold text-[#F5D782] transition hover:bg-[#624529]"
                   >
-                    🔊 Escuchar comentario
+                    <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    Escuchar comentario
                   </button>
                 </div>
               </article>

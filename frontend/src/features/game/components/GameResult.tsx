@@ -1,8 +1,23 @@
 
-import type {
-  GameEndReason,
-  GameState,
-} from "../../../types/api";
+import {
+  AlertTriangle,
+  Crown,
+  Download,
+  FileJson2,
+  FileSpreadsheet,
+  FileText,
+  Plus,
+  Table,
+} from "lucide-react";
+
+import type { GameState } from "../../../types/api";
+
+import {
+  formatDuration,
+  getGameOutcomeFlags,
+  getResultLabel,
+  reasonLabels,
+} from "../utils/resultLabels";
 
 interface GameResultProps {
   game: GameState;
@@ -15,73 +30,6 @@ const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ??
     "http://localhost:3000/api"
   ).replace(/\/$/, "");
-
-// MOTIVOS DE FINALIZACIÓN
-const reasonLabels: Record<
-  Exclude<GameEndReason, null>,
-  string
-> = {
-  checkmate: "Jaque mate",
-  draw: "Tablas",
-  stalemate: "Ahogado",
-  insufficient_material: "Material insuficiente",
-  threefold_repetition: "Triple repetición",
-  fifty_move_rule: "Regla de los cincuenta movimientos",
-  human_resignation: "Abandono",
-  technical_incident: "Incidencia técnica",
-};
-
-// OBTENER RESULTADO DE PARTIDA
-function getResultLabel(game: GameState): string {
-  switch (game.result) {
-    case "white_win":
-      return `Ganador: ${game.white.participant.displayName} (Blancas)`;
-
-    case "black_win":
-      return `Ganador: ${game.black.participant.displayName} (Negras)`;
-
-    case "draw":
-      return "Resultado: Empate";
-
-    case "technical_incident":
-      return "Partida finalizada por incidencia técnica";
-
-    default:
-      return "Partida finalizada";
-  }
-}
-
-// CALCULAR DURACIÓN
-function formatDuration(
-  startedAt: string | null,
-  endedAt: string | null,
-): string {
-  if (!startedAt || !endedAt) {
-    return "No disponible";
-  }
-
-  const start = new Date(startedAt).getTime();
-  const end = new Date(endedAt).getTime();
-
-  if (
-    Number.isNaN(start) ||
-    Number.isNaN(end) ||
-    end < start
-  ) {
-    return "No disponible";
-  }
-
-  const totalSeconds = Math.floor(
-    (end - start) / 1000,
-  );
-
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}:${seconds
-    .toString()
-    .padStart(2, "0")}`;
-}
 
 // ESTILO DE LOS BOTONES DE EXPORTACIÓN
 const exportButtonClass =
@@ -103,15 +51,7 @@ export function GameResult({
       ? reasonLabels[game.reason]
       : "No especificada";
 
-  const isTechnicalIncident =
-    game.status === "incident" ||
-    game.result === "technical_incident";
-
-  const isDraw = game.result === "draw";
-
-  const hasWinner =
-    game.result === "white_win" ||
-    game.result === "black_win";
+  const { isTechnicalIncident, isDraw, hasWinner } = getGameOutcomeFlags(game);
 
   // Construir URL de exportación.
   function getExportUrl(
@@ -132,9 +72,10 @@ export function GameResult({
         <div>
           <h2
             id="game-result-title"
-            className="m-0 text-lg font-bold text-[#E8B84B]"
+            className="m-0 flex items-center gap-2 text-lg font-bold text-[#E8B84B]"
           >
-            ♛ Partida finalizada
+            <Crown className="h-5 w-5" aria-hidden="true" />
+            Partida finalizada
           </h2>
 
           <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
@@ -163,14 +104,16 @@ export function GameResult({
           <div className="flex items-start gap-3">
 
             {/* ICONO */}
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#75572A] bg-[#241A15] text-2xl text-[#E8B84B]">
-              {isTechnicalIncident
-                ? "⚠"
-                : hasWinner
-                  ? "♛"
-                  : isDraw
-                    ? "½"
-                    : "♟"}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#75572A] bg-[#241A15] text-[#E8B84B]">
+              {isTechnicalIncident ? (
+                <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+              ) : hasWinner ? (
+                <Crown className="h-6 w-6" aria-hidden="true" />
+              ) : isDraw ? (
+                <span className="text-xl font-bold" aria-hidden="true">½</span>
+              ) : (
+                <Crown className="h-6 w-6" aria-hidden="true" />
+              )}
             </div>
 
             <div className="min-w-0 flex-1">
@@ -237,16 +180,17 @@ export function GameResult({
 
         {/* PARTICIPANTES */}
         <div className="mb-5 rounded-xl border border-[#493522] bg-[#1B130F] p-4">
-          <h3 className="mb-4 mt-0 text-sm font-bold text-[#E8B84B]">
-            ♟ Participantes
+          <h3 className="mb-4 mt-0 flex items-center gap-2 text-sm font-bold text-[#E8B84B]">
+            <Crown className="h-4 w-4" aria-hidden="true" />
+            Participantes
           </h3>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 
             {/* BLANCAS */}
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#E8D0A9] text-2xl text-[#211712]">
-                ♔
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#E8D0A9] text-[#211712]">
+                <Crown className="h-5 w-5" aria-hidden="true" />
               </div>
 
               <div className="min-w-0">
@@ -262,8 +206,8 @@ export function GameResult({
 
             {/* NEGRAS */}
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#75572A] bg-[#302218] text-2xl text-[#E8B84B]">
-                ♚
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#75572A] bg-[#302218] text-[#E8B84B]">
+                <Crown className="h-5 w-5" aria-hidden="true" />
               </div>
 
               <div className="min-w-0">
@@ -283,8 +227,9 @@ export function GameResult({
         <div className="mb-5 rounded-xl border border-[#75572A] bg-[#302218] p-4">
 
           <div className="mb-4">
-            <h3 className="m-0 text-base font-bold text-[#E8B84B]">
-              📥 Exportar partida
+            <h3 className="m-0 flex items-center gap-2 text-base font-bold text-[#E8B84B]">
+              <Download className="h-4 w-4" aria-hidden="true" />
+              Exportar partida
             </h3>
 
             <p className="mb-0 mt-2 text-xs leading-relaxed text-[#B6A18A]">
@@ -302,7 +247,7 @@ export function GameResult({
               className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#1D6F42] bg-[#1D6F42] px-4 py-2 text-xs font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-[#237A4B] hover:shadow-lg hover:shadow-[#1D6F42]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D6F42]"
               aria-label="Descargar partida en formato Excel con colores y formato profesional"
             >
-              <span aria-hidden="true">📗</span>
+              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
               Descargar Excel
             </a>
 
@@ -312,7 +257,7 @@ export function GameResult({
               className={exportButtonClass}
               aria-label="Descargar partida en formato PGN"
             >
-              <span aria-hidden="true">♟</span>
+              <FileText className="h-4 w-4" aria-hidden="true" />
               Descargar PGN
             </a>
 
@@ -322,7 +267,7 @@ export function GameResult({
               className={exportButtonClass}
               aria-label="Descargar partida en formato CSV"
             >
-              <span aria-hidden="true">📊</span>
+              <Table className="h-4 w-4" aria-hidden="true" />
               Descargar CSV
             </a>
 
@@ -332,7 +277,7 @@ export function GameResult({
               className={exportButtonClass}
               aria-label="Descargar partida en formato JSON"
             >
-              <span aria-hidden="true">📄</span>
+              <FileJson2 className="h-4 w-4" aria-hidden="true" />
               Descargar JSON
             </a>
           </div>
@@ -350,7 +295,7 @@ export function GameResult({
           className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-5 py-3 text-sm font-bold text-[#211712] transition duration-200 hover:-translate-y-0.5 hover:bg-[#F5D782] hover:shadow-lg hover:shadow-[#E8B84B]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F5D782]"
           onClick={onNewGame}
         >
-          <span aria-hidden="true">♟</span>
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Nueva partida
         </button>
       </div>

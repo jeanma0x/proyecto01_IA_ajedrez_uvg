@@ -1,6 +1,8 @@
 
 import { useState } from "react";
 
+import { Crown, Pause, Play } from "lucide-react";
+
 import { ApiClientError } from "../../../services/api/apiClient";
 import { controlGame } from "../../../services/api/gameApi";
 
@@ -57,8 +59,9 @@ export function GameControls({
       {/* ENCABEZADO */}
       <div className="flex items-center justify-between border-b border-[#493522] bg-[#302218] px-5 py-4">
         <div>
-          <h2 className="m-0 text-lg font-bold text-[#E8B84B]">
-            ♛ Controles de partida
+          <h2 className="m-0 flex items-center gap-2 text-lg font-bold text-[#E8B84B]">
+            <Crown className="h-5 w-5" aria-hidden="true" />
+            Controles de partida
           </h2>
           <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
             Administración de la partida
@@ -107,22 +110,24 @@ export function GameControls({
             {game.status === "active" && (
               <button
                 type="button"
-                className="min-h-11 w-full rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-5 py-2 font-bold text-[#211712] transition hover:bg-[#F5D782] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-5 py-2 font-bold text-[#211712] transition hover:bg-[#F5D782] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 disabled={isUpdating}
                 onClick={() => void updateControl("pause")}
               >
-                ⏸ Pausar
+                <Pause className="h-4 w-4" aria-hidden="true" />
+                Pausar
               </button>
             )}
 
             {game.status === "paused" && (
               <button
                 type="button"
-                className="min-h-11 w-full rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-5 py-2 font-bold text-[#211712] transition hover:bg-[#F5D782] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-5 py-2 font-bold text-[#211712] transition hover:bg-[#F5D782] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 disabled={isUpdating}
                 onClick={() => void updateControl("resume")}
               >
-                ▶ Reanudar
+                <Play className="h-4 w-4" aria-hidden="true" />
+                Reanudar
               </button>
             )}
           </div>

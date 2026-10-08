@@ -1,12 +1,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { Crown, Loader2, RefreshCw, Trophy } from "lucide-react";
+
 import { getStatistics } from "../../../services/api/gameApi";
 import type { StatisticRow } from "../../../types/api";
-
-interface StatisticsViewProps {
-  onClose: () => void;
-}
 
 const difficultyLabels: Record<string, string> = {
   beginner: "Principiante",
@@ -20,9 +18,7 @@ function formatNumber(value: number): string {
   }).format(value);
 }
 
-export function StatisticsView({
-  onClose,
-}: StatisticsViewProps) {
+export function StatisticsView() {
   const [statistics, setStatistics] = useState<StatisticRow[]>([]);
   const [selectedParticipant, setSelectedParticipant] = useState("");
   const [loading, setLoading] = useState(true);
@@ -106,22 +102,15 @@ export function StatisticsView({
       {/* ENCABEZADO */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="m-0 text-2xl font-bold text-[#E8B84B]">
-            ♛ Estadísticas de jugadores
+          <h2 className="m-0 flex items-center gap-2 text-2xl font-bold text-[#E8B84B]">
+            <Crown className="h-6 w-6" aria-hidden="true" />
+            Estadísticas de jugadores
           </h2>
 
           <p className="mb-0 mt-2 text-sm text-[#B6A18A]">
             Rendimiento de los participantes en partidas finalizadas.
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-[#75572A] bg-[#362718] px-4 py-2 font-semibold text-[#F0DFBF] transition hover:bg-[#49331E]"
-        >
-          ← Volver
-        </button>
       </div>
 
       {/* FILTROS */}
@@ -147,7 +136,7 @@ export function StatisticsView({
               onChange={(event) =>
                 setSelectedParticipant(event.target.value)
               }
-              className="w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2.5 text-sm text-[#F0DFBF]"
+              className="min-h-11 w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2.5 text-sm text-[#F0DFBF]"
             >
               <option value="">Todos los participantes</option>
 
@@ -163,16 +152,18 @@ export function StatisticsView({
             type="button"
             onClick={() => setReloadKey((key) => key + 1)}
             disabled={loading}
-            className="rounded-lg border border-[#75572A] bg-[#362718] px-4 py-2.5 text-sm font-bold text-[#F0DFBF] hover:bg-[#49331E] disabled:opacity-50"
+            className="flex min-h-11 items-center gap-2 rounded-lg border border-[#75572A] bg-[#362718] px-4 py-2.5 text-sm font-bold text-[#F0DFBF] hover:bg-[#49331E] disabled:opacity-50"
           >
-            ↻ Actualizar
+            <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden="true" />
+            Actualizar
           </button>
         </div>
       </div>
 
       {/* ESTADOS */}
       {loading && (
-        <div className="rounded-xl border border-[#59412A] bg-[#241A15] p-8 text-center text-[#E8B84B]">
+        <div className="flex items-center justify-center gap-3 rounded-xl border border-[#59412A] bg-[#241A15] p-8 text-center text-[#E8B84B]">
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
           Cargando estadísticas...
         </div>
       )}
@@ -214,8 +205,9 @@ export function StatisticsView({
           {/* TABLA */}
           <div className="overflow-hidden rounded-xl border border-[#59412A] bg-[#241A15] shadow-lg">
             <div className="border-b border-[#493522] bg-[#302218] px-4 py-3">
-              <h3 className="m-0 font-bold text-[#E8B84B]">
-                ♟ Rendimiento por participante y dificultad
+              <h3 className="m-0 flex items-center gap-2 font-bold text-[#E8B84B]">
+                <Trophy className="h-4 w-4" aria-hidden="true" />
+                Rendimiento por participante y dificultad
               </h3>
             </div>
 

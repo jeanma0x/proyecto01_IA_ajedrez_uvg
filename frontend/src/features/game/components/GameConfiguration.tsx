@@ -1,6 +1,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Crown, Loader2, Zap } from "lucide-react";
+
 import { ApiClientError } from "../../../services/api/apiClient";
 import {
   createGame,
@@ -164,11 +166,11 @@ export function GameConfiguration({
   if (isLoadingParticipants) {
     return (
       <section className="rounded-xl border border-[#59412A] bg-[#241A15] p-6 text-center">
-        <div className="mb-3 text-4xl text-[#E8B84B]">
-          ♛
+        <div className="mb-3 flex justify-center text-[#E8B84B]">
+          <Loader2 className="h-9 w-9 animate-spin" aria-hidden="true" />
         </div>
 
-        <p className="m-0 animate-pulse text-[#D9C5A7]">
+        <p className="m-0 text-[#D9C5A7]">
           Cargando participantes...
         </p>
       </section>
@@ -180,8 +182,8 @@ export function GameConfiguration({
 
       {/* ENCABEZADO */}
       <div className="mb-6 text-center">
-        <div className="mb-3 text-4xl text-[#E8B84B]">
-          ♛
+        <div className="mb-3 flex justify-center text-[#E8B84B]">
+          <Crown className="h-9 w-9" aria-hidden="true" />
         </div>
 
         <h2 className="m-0 text-2xl font-bold text-[#E8B84B]">
@@ -207,8 +209,8 @@ export function GameConfiguration({
             {/* JUGADOR BLANCO */}
             <div className="min-w-0 overflow-hidden rounded-xl border border-[#59412A] bg-[#2B1E17]">
               <div className="flex items-center gap-3 border-b border-[#493522] bg-[#35261C] px-4 py-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#D9C5A7] bg-[#E8D0A9] text-3xl text-[#211712]">
-                  ♔
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#D9C5A7] bg-[#E8D0A9] text-[#211712]">
+                  <Crown className="h-6 w-6" aria-hidden="true" />
                 </div>
 
                 <div>
@@ -303,8 +305,8 @@ export function GameConfiguration({
             {/* JUGADOR NEGRO */}
             <div className="min-w-0 overflow-hidden rounded-xl border border-[#59412A] bg-[#2B1E17]">
               <div className="flex items-center gap-3 border-b border-[#493522] bg-[#35261C] px-4 py-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#75572A] bg-[#160F0D] text-3xl text-[#E8B84B]">
-                  ♚
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#75572A] bg-[#160F0D] text-[#E8B84B]">
+                  <Crown className="h-6 w-6" aria-hidden="true" />
                 </div>
 
                 <div>
@@ -412,8 +414,8 @@ export function GameConfiguration({
           {isAiVsAi && !sameAiSelected && (
             <div className="mt-5 rounded-xl border border-[#75572A] bg-[#302218] p-4">
               <div className="mb-4 flex items-center gap-3">
-                <span className="text-2xl text-[#E8B84B]">
-                  ⚡
+                <span className="text-[#E8B84B]">
+                  <Zap className="h-6 w-6" aria-hidden="true" />
                 </span>
 
                 <div>
@@ -461,7 +463,11 @@ export function GameConfiguration({
                 isCreatingGame
               }
             >
-              <span aria-hidden="true">♛</span>
+              {isCreatingGame ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Crown className="h-4 w-4" aria-hidden="true" />
+              )}
 
               {isCreatingGame
                 ? "Creando partida..."

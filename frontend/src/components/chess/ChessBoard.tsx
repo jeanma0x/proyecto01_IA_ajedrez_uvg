@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import { AlertTriangle, Crown } from "lucide-react";
+
 import { Chessboard } from "react-chessboard";
 
 import type {
@@ -258,6 +260,19 @@ export function ChessBoard({
             darkSquareStyle: {
               backgroundColor: DARK_SQUARE,
             },
+            // Contraste de las coordenadas (a-h, 1-8) contra cada tono de
+            // casilla — medido con la fórmula WCAG, antes 2.10:1/2.72:1
+            // (muy por debajo del mínimo de 4.5:1). En la casilla clara,
+            // 9.19:1 (cumple). En la oscura, blanco puro es el máximo
+            // matemáticamente alcanzable contra #A67C52 sin oscurecer la
+            // casilla (~3.73:1) — mejora real de +37% sobre el original,
+            // documentado así en vez de afirmar cumplimiento total.
+            lightSquareNotationStyle: {
+              color: "#3A2A1B",
+            },
+            darkSquareNotationStyle: {
+              color: "#FFFFFF",
+            },
           }}
         />
       </div>
@@ -266,8 +281,9 @@ export function ChessBoard({
       <div className="mt-4 overflow-hidden rounded-xl border border-[#59412A] bg-[#241A15] shadow-lg">
 
         <div className="border-b border-[#493522] bg-[#302218] px-5 py-4">
-          <h2 className="m-0 text-lg font-bold text-[#E8B84B]">
-            ♛ Estado de la partida
+          <h2 className="m-0 flex items-center gap-2 text-lg font-bold text-[#E8B84B]">
+            <Crown className="h-5 w-5" aria-hidden="true" />
+            Estado de la partida
           </h2>
           <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
             Información actual del enfrentamiento
@@ -280,7 +296,7 @@ export function ChessBoard({
             {/* BLANCAS */}
             <div className="rounded-lg border border-[#493522] bg-[#1B130F] p-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#B6A18A]">
-                ♙ Blancas
+                Blancas
               </span>
               <strong className="mt-2 block break-words text-sm text-[#F0DFBF]">
                 {game.white.participant.displayName}
@@ -290,7 +306,7 @@ export function ChessBoard({
             {/* NEGRAS */}
             <div className="rounded-lg border border-[#493522] bg-[#1B130F] p-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#B6A18A]">
-                ♟ Negras
+                Negras
               </span>
               <strong className="mt-2 block break-words text-sm text-[#F0DFBF]">
                 {game.black.participant.displayName}
@@ -304,8 +320,8 @@ export function ChessBoard({
               </span>
               <strong className="mt-2 block text-sm text-[#E8B84B]">
                 {game.turn === "white"
-                  ? "♙ Blancas"
-                  : "♟ Negras"}
+                  ? "Blancas"
+                  : "Negras"}
               </strong>
             </div>
 
@@ -324,9 +340,10 @@ export function ChessBoard({
           {game.isCheck && game.status === "active" && (
             <p
               role="status"
-              className="mb-0 mt-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm font-semibold text-red-300"
+              className="mb-0 mt-4 flex items-center gap-2 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm font-semibold text-red-300"
             >
-              ⚠ ¡Jaque al rey {game.turn === "white" ? "blanco" : "negro"}!
+              <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              ¡Jaque al rey {game.turn === "white" ? "blanco" : "negro"}!
             </p>
           )}
 
@@ -369,7 +386,7 @@ export function ChessBoard({
 
               <button
                 type="button"
-                className="min-h-9 self-start rounded-lg border border-red-700 bg-red-900/40 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-900/70"
+                className="min-h-11 self-start rounded-lg border border-red-700 bg-red-900/40 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-900/70"
                 onClick={requestAiTurn}
               >
                 Reintentar movimiento
