@@ -25,11 +25,11 @@ const participants = [
     modelId: "claude-haiku-4-5-20251001",
   },
   {
-    id: "gpt-oss-120b",
+    id: "gpt-5-nano",
     type: "ai" as const,
-    displayName: "GPT-OSS 120B (Groq)",
+    displayName: "GPT-5 Nano",
     company: "OpenAI",
-    modelId: "openai/gpt-oss-120b",
+    modelId: "gpt-5-nano",
   },
 ];
 

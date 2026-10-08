@@ -134,6 +134,38 @@ una por proveedor, todas en el backend (no de los proveedores):
 | OpenAI `gpt-oss` vía Groq | Incidencia por error 400 mal clasificado | **10/10** — se vio en vivo: una jugada fue rechazada, reintentó, y la segunda sí fue válida |
 | Anthropic Claude Haiku | Incidencia, repetía la misma jugada ilegal | **9/10** — mejoró (ya no repite literal en la mayoría de los casos), pero en una posición de jaque complicada volvió a elegir la misma jugada geométricamente imposible pese al feedback. **No es un bug de código** — es una limitación real del modelo más económico de Claude (Haiku) en posiciones de jaque difíciles. El sistema de incidencia funcionó como debía: cortó limpio en vez de corromper el tablero (RN-08/RN-09) |
 
+## Actualización — 2026-10-08: Groq reemplazado por OpenAI directo (mismo tercer candidato)
+
+Después de los 3 fixes de arriba, el equipo corrió una matriz de pruebas (6 combinaciones × varios
+intentos) y **Groq agotó su cuota gratuita diaria** — empezó a rechazar todo con
+`rate_limit` ("Límite de cuota alcanzado en Groq") desde la primera jugada de cada partida. Al
+intentar subir al plan "Developer" de Groq (sin costo, solo con tarjeta), su propia consola lo
+bloqueó: *"Developer tier upgrades are temporarily unavailable due to high demand"* — fuera de
+nuestro control.
+
+En vez de esperar indefinidamente a que Groq libere su cuota o su upgrade, se cambió el acceso al
+**mismo proveedor** (OpenAI) pero **directo**, sin pasar por Groq:
+
+- Modelo: **`gpt-5-nano`** (el más económico de OpenAI, con function calling nativo).
+- Mínimo de pago de OpenAI: **$5**, igual que Gemini y Anthropic.
+- La empresa "OpenAI" para RN-03 no cambia — solo cambia el *host* (de Groq a la API propia de
+  OpenAI), evitando el problema de capacidad de Groq.
+- El adaptador de Groq (`lib/adapters/groq.ts`) se dejó intacto, sin usarse como participante
+  jugable — queda disponible si se quiere reactivar más adelante. El modo comentarista
+  (`lib/commentary.ts`) sigue usando Groq (gratis) porque es una funcionalidad secundaria de menor
+  volumen, donde el riesgo de agotar cuota es mucho menor.
+
+**`gpt-5-nano` necesitó su propio ajuste fino** (mismo patrón que Gemini: es un modelo de
+razonamiento). Tres iteraciones con la key real:
+1. Con los parámetros "normales" (`max_tokens`, sin `reasoning_effort`): **0/10** — la API de Chat
+   Completions rechaza `max_tokens` en modelos de razonamiento (hay que usar
+   `max_completion_tokens`), así que nunca llegaba a llamar a la función.
+2. Con `max_completion_tokens` + `reasoning_effort: "minimal"`: **2/10** — ya llamaba a la función,
+   pero con tan poco razonamiento ignoraba la posición real (repitió una jugada ya hecha).
+3. Con `reasoning_effort: "low"` + un piso de 1500 tokens (en vez de los 600-1200 compartidos con
+   los demás proveedores): **10/10**, partida real y coherente, sin repeticiones ni jugadas
+   ilegales.
+
 **Nota honesta para la presentación:** con esto, la mayoría de las partidas deberían completarse
 sin incidencia, pero **sigue siendo posible** que una IA (sobre todo Claude Haiku, el modelo más
 barato) falle genuinamente en una posición difícil y la partida termine como incidencia técnica —
@@ -142,14 +174,15 @@ más esta probabilidad, la opción sería usar un modelo Claude más capaz (Sonn
 "avanzado"/"maestro", a costa de más presupuesto — no implementado todavía, queda como posible
 ajuste fino si da tiempo antes del 9 de octubre.
 
-**Estado consolidado de los 3 modelos (final):**
+**Estado consolidado de los 3 modelos (final, 2026-10-08):**
 
 | Modelo | Estado | Vía | Costo |
 | --- | --- | --- | --- |
-| OpenAI `gpt-oss-120b` vía Groq | ✅ Confirmado (10/10) | Tier gratuito de Groq | $0 |
+| OpenAI (`gpt-5-nano`) | ✅ Confirmado (10/10) | API directa de OpenAI | $5 prepago |
 | Google Gemini (`gemini-3.8-flash`) | ✅ Confirmado (10/10) | Plan de pago | $5 prepago + créditos promocionales |
-| Anthropic (`claude-haiku-4-5-20251001`) | ✅ Confirmado (10/10) | Plan de pago | $5 prepago |
+| Anthropic (`claude-haiku-4-5-20251001`) | ✅ Confirmado (9-10/10) | Plan de pago | $5 prepago |
 | ~~Mistral AI~~ | ❌ Descartado | — | Mínimo de pago ($10) fuera de presupuesto |
+| ~~OpenAI `gpt-oss-120b` vía Groq~~ | ❌ Descartado como participante jugable | — | Cuota gratuita de Groq se agotó y su propio upgrade de pago está bloqueado por demanda alta. Sigue usándose (gratis) solo para el modo comentarista, que tiene mucho menor volumen |
 
 ## Candidatos propuestos (histórico — ver tabla de investigación arriba para el estado vigente)
 
@@ -211,10 +244,10 @@ resolverla con el docente antes de depender de esa opción.
 
 ## Checklist de esta decisión
 - [x] Prueba de conexión + 10 movimientos legales ejecutada para Google/Gemini — 10/10 el 2026-10-09, tras activar plan de pago
-- [x] Prueba de conexión + 10 movimientos legales ejecutada para Anthropic (reemplazo de Mistral) — 10/10 el 2026-10-09
-- [x] Prueba de conexión + 10 movimientos legales ejecutada para OpenAI `gpt-oss` vía Groq — 10/10 el 2026-10-01
+- [x] Prueba de conexión + 10 movimientos legales ejecutada para Anthropic (reemplazo de Mistral) — 9-10/10, ver nota de límites del modelo
+- [x] Prueba de conexión + 10 movimientos legales ejecutada para OpenAI `gpt-5-nano` directo (reemplaza a Groq) — 10/10 el 2026-10-08
 - [x] Confirmado que las tres empresas creadoras son distintas entre sí (Google, Anthropic, OpenAI)
-- [x] Condición gratuita de cada una documentada con fecha de verificación — solo Groq es gratis; Gemini y Anthropic son de pago (ver nota de cumplimiento)
-- [x] Alternativa de respaldo identificada para al menos un modelo (Groq ya es el respaldo usado de DeepSeek; Anthropic es el respaldo usado de Mistral)
+- [x] Condición gratuita de cada una documentada con fecha de verificación — ninguna de las 3 es gratuita ya (Groq, que sí lo era, se descartó como participante jugable; sigue gratis solo para comentarista)
+- [x] Alternativa de respaldo identificada para al menos un modelo (Anthropic es el respaldo de Mistral; OpenAI directo es el respaldo de Groq)
 - [ ] Parámetros de los 3 niveles de dificultad definidos y probados por modelo
-- [x] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — los 3 modelos `Confirmada` desde 2026-10-09
+- [x] Decisión final registrada en `05-DECISIONES.md`, con fecha y responsable — los 3 modelos `Confirmada` desde 2026-10-08

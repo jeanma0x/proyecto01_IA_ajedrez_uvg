@@ -3,7 +3,7 @@
 // docs/04-MODELOS_PENDIENTE.md. Uso: npx tsx scripts/test-ten-moves.ts
 import { GoogleAdapter } from "../lib/adapters/google";
 import { AnthropicAdapter } from "../lib/adapters/anthropic";
-import { GroqAdapter } from "../lib/adapters/groq";
+import { OpenAiAdapter } from "../lib/adapters/openai";
 import { AdapterError } from "../lib/adapters/types";
 import type { AiAdapter } from "../lib/adapters/types";
 import { applyMove, createInitialFen, getLegalMovesSan, getTerminalState } from "../lib/chess/engine";
@@ -103,8 +103,8 @@ async function main() {
     await runTenMoves("Anthropic", new AnthropicAdapter(process.env.ANTHROPIC_API_KEY));
   }
 
-  if (process.env.GROQ_API_KEY) {
-    await runTenMoves("Groq (OpenAI gpt-oss)", new GroqAdapter(process.env.GROQ_API_KEY));
+  if (process.env.OPENAI_API_KEY) {
+    await runTenMoves("OpenAI", new OpenAiAdapter(process.env.OPENAI_API_KEY));
   }
 }
 

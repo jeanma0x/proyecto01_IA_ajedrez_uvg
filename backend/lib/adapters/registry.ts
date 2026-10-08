@@ -1,12 +1,12 @@
 import { GoogleAdapter } from "./google";
 import { AnthropicAdapter } from "./anthropic";
-import { GroqAdapter } from "./groq";
+import { OpenAiAdapter } from "./openai";
 import { AdapterError } from "./types";
 import type { AiAdapter } from "./types";
 
 let googleAdapter: AiAdapter | null = null;
 let anthropicAdapter: AiAdapter | null = null;
-let groqAdapter: AiAdapter | null = null;
+let openaiAdapter: AiAdapter | null = null;
 
 // Participant.id (ver prisma/seed.ts) -> instancia de adaptador. Centralizar
 // aquí evita llamadas directas a un SDK de proveedor fuera de esta capa
@@ -23,9 +23,9 @@ export function getAdapterForParticipantId(participantId: string): AiAdapter {
       return anthropicAdapter;
     }
 
-    case "gpt-oss-120b": {
-      groqAdapter ??= new GroqAdapter(requireEnv("GROQ_API_KEY"));
-      return groqAdapter;
+    case "gpt-5-nano": {
+      openaiAdapter ??= new OpenAiAdapter(requireEnv("OPENAI_API_KEY"));
+      return openaiAdapter;
     }
 
     default:

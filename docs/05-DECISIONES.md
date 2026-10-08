@@ -23,7 +23,8 @@ falta aprobar) · `Pendiente` (aún sin definir) · `Descartada` (se evaluó y n
 | 2026-10-01 | Backend: API routes/Route Handlers de Next.js (en vez de Express serverless) | Confirmada | Jean Marco | Next.js corre nativo en Vercel sin capa de adaptación extra; un solo framework para frontend y backend; encaja directo con Prisma+Neon. Decidido por Jean Marco (dueño de Frente 2/3) para no bloquear el arranque del backend — ver justificación completa en `01-ARQUITECTURA.md` |
 | 2026-09-25 | Persistencia: SQLite (descartada) | Descartada | — | Sustituida por Neon Postgres al confirmarse el hosting en Vercel |
 | 2026-09-25 | Modelos: Google Gemini + Mistral `mistral-small-latest` + OpenAI `gpt-oss-120b` vía Groq (reemplaza a DeepSeek) | Propuesta | Claude Code (investigación web) | DeepSeek dejó de tener modelos gratuitos en OpenRouter desde julio 2026 (confirmado por búsqueda web). El reemplazo usa la empresa creadora (OpenAI) como "tercera empresa", resolviendo la ambigüedad Groq-vs-Meta. Ver detalle y fuentes en `04-MODELOS_PENDIENTE.md` |
-| 2026-10-01 | OpenAI `gpt-oss-120b` vía Groq | Confirmada | Jean Marco | Prueba real de 10 movimientos legales consecutivos: 10/10 con claves reales. Primer modelo production-ready del proyecto. Ver evidencia en `04-MODELOS_PENDIENTE.md` |
+| 2026-10-01 | OpenAI `gpt-oss-120b` vía Groq | Descartada | Jean Marco | Confirmada inicialmente (10/10), pero la cuota gratuita de Groq se agotó durante pruebas de equipo y su propio upgrade de pago quedó bloqueado por demanda alta ("temporarily unavailable"), fuera de nuestro control. Reemplazada — ver fila 2026-10-08 |
+| 2026-10-08 | OpenAI directo (`gpt-5-nano`, sin pasar por Groq) reemplaza a `gpt-oss-120b` vía Groq | Confirmada | Jean Marco | Mismo tercer modelo/empresa (OpenAI) para RN-03, solo cambia el host. Mínimo de pago de OpenAI: $5, igual que Gemini y Anthropic. Necesitó ajuste fino (`max_completion_tokens` + `reasoning_effort: "low"` + piso de 1500 tokens) por ser un modelo de razonamiento — ver detalle en `04-MODELOS_PENDIENTE.md`. Prueba real tras el ajuste: 10/10, 0 fallos. Groq se mantiene (gratis) solo para el modo comentarista, de menor volumen |
 | 2026-10-09 | Google Gemini (`gemini-3.8-flash`) — pasa a plan de pago ($5 prepago) | Confirmada | Jean Marco | La cuota gratuita era demasiado agresiva para uso confiable (ver fila 2026-10-01). Se activó facturación en Google AI Studio con $5 de crédito prepago. Prueba real de 10 movimientos legales consecutivos tras el pago: 10/10, 0 fallos, 0 reintentos. Nota de cumplimiento: esto convierte a Gemini en un modelo de pago, lo cual contradice RNF-16 y el alcance del proyecto (ver `00-CONTEXTO_PROYECTO.md`) — decisión tomada conscientemente por el equipo, documentarla así ante el docente si se pregunta |
 | 2026-10-01 | Mistral AI — generación de API key | Descartada | Jean Marco | La consola ("Mistral Studio") pedía "Upgrade" para generar una key incluso en el plan gratuito. Reemplazada — ver fila 2026-10-09 |
 | 2026-10-09 | Mistral AI reemplazado por Anthropic (`claude-haiku-4-5-20251001`) como tercer modelo | Confirmada | Jean Marco (decisión), Claude Code (implementación) | El plan de pago de Mistral exige un mínimo de $10 — fuera del presupuesto de $5/modelo ya definido. Anthropic sí permite exactamente $5. **Nota de transparencia:** Anthropic es la empresa creadora de Claude Code, la IA que construyó este backend — se le señaló explícitamente este conflicto de interés al equipo antes de decidir, y la elección se basó en el dato objetivo del monto mínimo, no en una recomendación espontánea de la IA. Prueba real de 10 movimientos: 10/10, 0 fallos. Ver `04-MODELOS_PENDIENTE.md` |
@@ -32,9 +33,10 @@ falta aprobar) · `Pendiente` (aún sin definir) · `Descartada` (se evaluó y n
 
 ## Pendientes de alto nivel para la reunión del equipo
 
-~~Validar en firme los 3 modelos~~ — **Confirmado el 2026-10-09**: OpenAI `gpt-oss` vía Groq (gratis),
-Google Gemini (pago, $5) y Anthropic Claude Haiku (pago, $5) — los 3 con prueba real de 10/10
-movimientos. Ver `04-MODELOS_PENDIENTE.md`.
+~~Validar en firme los 3 modelos~~ — **Confirmado el 2026-10-08**: Google Gemini (pago, $5),
+Anthropic Claude Haiku (pago, $5) y OpenAI `gpt-5-nano` directo (pago, $5, reemplaza a Groq) — los 3
+con prueba real de 10/10 movimientos. Ver `04-MODELOS_PENDIENTE.md`. Nota: ninguno terminó siendo
+gratuito al final — RNF-16 queda documentado como excepción consciente del equipo.
 
 1. Aprobar la funcionalidad adicional definitiva (una sola, con dueño claro de su implementación).
 2. Elegir herramienta de gestión de tareas (Jira / Azure Boards / otra).
