@@ -229,6 +229,16 @@ export function ChessBoard({
     };
   }
 
+  // Rey en jaque, en rojo — el backend calcula esto (capa de motor), el
+  // frontend solo lo pinta.
+  if (game.isCheck && game.checkedSquare) {
+    squareStyles[game.checkedSquare] = {
+      ...squareStyles[game.checkedSquare],
+      backgroundColor: "rgba(220, 38, 38, 0.65)",
+      boxShadow: "inset 0 0 0 3px rgba(220, 38, 38, 0.95)",
+    };
+  }
+
   return (
     <section className="w-full max-w-[650px]">
 
@@ -309,6 +319,16 @@ export function ChessBoard({
               </strong>
             </div>
           </div>
+
+          {/* JAQUE */}
+          {game.isCheck && game.status === "active" && (
+            <p
+              role="status"
+              className="mb-0 mt-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm font-semibold text-red-300"
+            >
+              ⚠ ¡Jaque al rey {game.turn === "white" ? "blanco" : "negro"}!
+            </p>
+          )}
 
           {/* IA PENSANDO */}
           {game.status === "active" &&
