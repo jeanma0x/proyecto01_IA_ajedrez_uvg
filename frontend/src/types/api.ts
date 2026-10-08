@@ -140,3 +140,14 @@ export interface AiCommentaryRequest {
 export interface AiCommentaryResponse {
   commentary: string;
 }
+export interface StatisticRow {
+  participantId: string;
+  displayName: string;
+  difficulty: Difficulty | null;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  avgMovesPerWin: number | null;
+}

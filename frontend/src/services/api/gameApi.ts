@@ -1,20 +1,31 @@
+
 import { apiRequest } from "./apiClient";
 
 import type {
   AiCommentaryRequest,
   AiCommentaryResponse,
   CreateGameRequest,
+  Difficulty,
   GameControlRequest,
   GameState,
   LegalMovesResponse,
   MakeMoveRequest,
   Move,
   Participant,
+  StatisticRow,
 } from "../../types/api";
+
+// ==========================================
+// PARTICIPANTES
+// ==========================================
 
 export function getParticipants(): Promise<Participant[]> {
   return apiRequest<Participant[]>("/participants");
 }
+
+// ==========================================
+// CREAR PARTIDA
+// ==========================================
 
 export function createGame(
   data: CreateGameRequest,
@@ -25,6 +36,10 @@ export function createGame(
   });
 }
 
+// ==========================================
+// OBTENER PARTIDA
+// ==========================================
+
 export function getGame(
   gameId: string,
 ): Promise<GameState> {
@@ -32,6 +47,10 @@ export function getGame(
     `/games/${gameId}`,
   );
 }
+
+// ==========================================
+// REALIZAR MOVIMIENTO
+// ==========================================
 
 export function makeMove(
   gameId: string,
@@ -46,6 +65,10 @@ export function makeMove(
   );
 }
 
+// ==========================================
+// HISTORIAL DE MOVIMIENTOS
+// ==========================================
+
 export function getMoves(
   gameId: string,
 ): Promise<Move[]> {
@@ -53,6 +76,10 @@ export function getMoves(
     `/games/${gameId}/moves`,
   );
 }
+
+// ==========================================
+// MOVIMIENTOS LEGALES
+// ==========================================
 
 export function getLegalMoves(
   gameId: string,
@@ -62,6 +89,10 @@ export function getLegalMoves(
     `/games/${gameId}/legal-moves?from=${encodeURIComponent(from)}`,
   );
 }
+
+// ==========================================
+// MOVIMIENTO DE INTELIGENCIA ARTIFICIAL
+// ==========================================
 
 export function requestAiMove(
   gameId: string,
@@ -73,6 +104,10 @@ export function requestAiMove(
     },
   );
 }
+
+// ==========================================
+// CONTROLES DE PARTIDA
+// ==========================================
 
 export function controlGame(
   gameId: string,
@@ -87,9 +122,13 @@ export function controlGame(
   );
 }
 
+// ==========================================
+// COMENTARISTA CON INTELIGENCIA ARTIFICIAL
+// ==========================================
+
 /*
- * Solicita al backend un comentario generado por IA
- * sobre el último movimiento realizado.
+ * Solicita al backend un comentario generado
+ * por IA sobre el último movimiento realizado.
  */
 export function requestAiCommentary(
   gameId: string,
@@ -101,5 +140,40 @@ export function requestAiCommentary(
       method: "POST",
       body: JSON.stringify(data),
     },
+  );
+}
+
+// ==========================================
+// ESTADÍSTICAS DE JUGADORES
+// ==========================================
+
+/*
+ * Obtiene las estadísticas de los participantes.
+ *
+ * Permite filtrar opcionalmente por:
+ * - ID del participante
+ * - Nivel de dificultad
+ *
+ * Si no se proporcionan filtros,
+ * devuelve todas las estadísticas.
+ */
+export function getStatistics(filter?: {
+  participantId?: string;
+  difficulty?: Difficulty;
+}): Promise<StatisticRow[]> {
+  const params = new URLSearchParams();
+
+  if (filter?.participantId) {
+    params.set("participantId", filter.participantId);
+  }
+
+  if (filter?.difficulty) {
+    params.set("difficulty", filter.difficulty);
+  }
+
+  const query = params.toString();
+
+  return apiRequest<StatisticRow[]>(
+    `/statistics${query ? `?${query}` : ""}`,
   );
 }
