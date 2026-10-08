@@ -9,6 +9,13 @@ interface GameResultProps {
   onNewGame: () => void;
 }
 
+// URL del backend para exportar partidas.
+const API_BASE_URL =
+  (
+    import.meta.env.VITE_API_BASE_URL ??
+    "http://localhost:3000/api"
+  ).replace(/\/$/, "");
+
 // MOTIVOS DE FINALIZACIÓN
 const reasonLabels: Record<
   Exclude<GameEndReason, null>,
@@ -25,9 +32,7 @@ const reasonLabels: Record<
 };
 
 // OBTENER RESULTADO DE PARTIDA
-function getResultLabel(
-  game: GameState,
-): string {
+function getResultLabel(game: GameState): string {
   switch (game.result) {
     case "white_win":
       return `Ganador: ${game.white.participant.displayName} (Blancas)`;
@@ -78,6 +83,10 @@ function formatDuration(
     .padStart(2, "0")}`;
 }
 
+// ESTILO DE LOS BOTONES DE EXPORTACIÓN
+const exportButtonClass =
+  "flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#75572A] bg-[#362718] px-4 py-3 text-sm font-bold text-[#F5D782] transition duration-200 hover:border-[#E8B84B] hover:bg-[#49331E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E8B84B]";
+
 export function GameResult({
   game,
   onNewGame,
@@ -104,6 +113,15 @@ export function GameResult({
     game.result === "white_win" ||
     game.result === "black_win";
 
+  // Construir URL de exportación.
+  function getExportUrl(
+    format: "pgn" | "csv" | "json",
+  ): string {
+    return `${API_BASE_URL}/games/${encodeURIComponent(
+      game.id,
+    )}/export?format=${format}`;
+  }
+
   return (
     <section
       className="w-full overflow-hidden rounded-xl border border-[#75572A] bg-[#241A15] text-[#EADFCF] shadow-xl"
@@ -125,7 +143,9 @@ export function GameResult({
         </div>
 
         <span className="rounded-lg border border-[#75572A] bg-[#3A2A1B] px-3 py-1 text-xs font-bold text-[#E8B84B]">
-          FINALIZADA
+          {isTechnicalIncident
+            ? "INCIDENCIA"
+            : "FINALIZADA"}
         </span>
       </div>
 
@@ -217,12 +237,13 @@ export function GameResult({
 
         {/* PARTICIPANTES */}
         <div className="mb-5 rounded-xl border border-[#493522] bg-[#1B130F] p-4">
-          <h3 className="m-0 mb-4 text-sm font-bold text-[#E8B84B]">
+          <h3 className="mb-4 mt-0 text-sm font-bold text-[#E8B84B]">
             ♟ Participantes
           </h3>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 
+            {/* BLANCAS */}
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#E8D0A9] text-2xl text-[#211712]">
                 ♔
@@ -239,6 +260,7 @@ export function GameResult({
               </div>
             </div>
 
+            {/* NEGRAS */}
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#75572A] bg-[#302218] text-2xl text-[#E8B84B]">
                 ♚
@@ -255,6 +277,60 @@ export function GameResult({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* EXPORTAR PARTIDA */}
+        <div className="mb-5 rounded-xl border border-[#75572A] bg-[#302218] p-4">
+
+          <div className="mb-4">
+            <h3 className="m-0 text-base font-bold text-[#E8B84B]">
+              📥 Exportar partida
+            </h3>
+
+            <p className="mb-0 mt-2 text-xs leading-relaxed text-[#B6A18A]">
+              Descarga los movimientos y resultados del
+              enfrentamiento para revisarlos, compartirlos
+              o analizarlos posteriormente.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+
+            {/* EXPORTAR PGN */}
+            <a
+              href={getExportUrl("pgn")}
+              className={exportButtonClass}
+              aria-label="Descargar partida en formato PGN"
+            >
+              <span aria-hidden="true">♟</span>
+              Descargar PGN
+            </a>
+
+            {/* EXPORTAR CSV */}
+            <a
+              href={getExportUrl("csv")}
+              className={exportButtonClass}
+              aria-label="Descargar partida en formato CSV"
+            >
+              <span aria-hidden="true">📊</span>
+              Descargar CSV
+            </a>
+
+            {/* EXPORTAR JSON */}
+            <a
+              href={getExportUrl("json")}
+              className={exportButtonClass}
+              aria-label="Descargar partida en formato JSON"
+            >
+              <span aria-hidden="true">📄</span>
+              Descargar JSON
+            </a>
+          </div>
+
+          <p className="mb-0 mt-3 text-xs text-[#B6A18A]">
+            PGN: ajedrez · CSV: hojas de cálculo ·
+            JSON: datos estructurados.
+          </p>
         </div>
 
         {/* BOTÓN NUEVA PARTIDA */}
