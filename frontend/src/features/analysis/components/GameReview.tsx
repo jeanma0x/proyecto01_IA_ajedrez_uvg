@@ -15,6 +15,11 @@ interface GameReviewProps {
   onClose: () => void;
 }
 
+interface AnalysisResult {
+  fen: string;
+  evaluation: StockfishEvaluation;
+}
+
 const INITIAL_FEN =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -26,6 +31,9 @@ const panelHeaderClass =
 
 const secondaryButtonClass =
   "min-h-10 rounded-lg border border-[#75572A] bg-[#362718] px-3 py-2 font-bold text-[#F0DFBF] transition hover:bg-[#49331E] disabled:cursor-not-allowed disabled:opacity-30";
+
+const goldButtonClass =
+  "min-h-10 rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-2 font-bold text-[#211712] transition hover:bg-[#F5D782] disabled:cursor-not-allowed disabled:opacity-40";
 
 function getMoveType(move: Move): {
   label: string;
@@ -49,11 +57,11 @@ function getMoveType(move: Move): {
     };
   }
 
-  if (san === "O-O" || san === "O-O-O") {
+  if (/^O-O(-O)?/.test(san)) {
     return {
       label: "Enroque",
       description:
-        "El jugador realizó un enroque para mejorar la seguridad de su rey.",
+        "El jugador realizó un enroque para cambiar la posición de su rey y su torre.",
     };
   }
 
@@ -84,11 +92,15 @@ function formatEvaluation(
   evaluation: StockfishEvaluation,
 ): string {
   if (evaluation.mate !== null) {
-    return evaluation.mate > 0
-      ? `Mate en ${evaluation.mate}`
-      : evaluation.mate < 0
-        ? `Recibe mate en ${Math.abs(evaluation.mate)}`
-        : "Jaque mate";
+    if (evaluation.mate > 0) {
+      return `Mate en ${evaluation.mate}`;
+    }
+
+    if (evaluation.mate < 0) {
+      return `Recibe mate en ${Math.abs(evaluation.mate)}`;
+    }
+
+    return "Jaque mate";
   }
 
   if (evaluation.scoreCp !== null) {
@@ -104,23 +116,37 @@ export function GameReview({
   game,
   onClose,
 }: GameReviewProps) {
+  // ========================================
+  // HISTORIAL DE MOVIMIENTOS
+  // ========================================
+
   const [moves, setMoves] = useState<Move[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // ========================================
+  // STOCKFISH
+  // ========================================
 
   const stockfishRef = useRef<StockfishService | null>(null);
   const analysisRequestRef = useRef(0);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const [evaluation, setEvaluation] =
-    useState<StockfishEvaluation | null>(null);
+  const [analysisResult, setAnalysisResult] =
+    useState<AnalysisResult | null>(null);
 
-  const [analysisError, setAnalysisError] =
-    useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<{
+    fen: string;
+    message: string;
+  } | null>(null);
 
-  // Cargar movimientos de la partida.
+  // ========================================
+  // CARGAR MOVIMIENTOS
+  // ========================================
+
   useEffect(() => {
     let cancelled = false;
 
@@ -129,20 +155,43 @@ export function GameReview({
       setError(null);
 
       try {
+        console.log(
+          "[GameReview] Consultando movimientos:",
+          game.id,
+        );
+
         const response = await getMoves(game.id);
+
+        if (!Array.isArray(response)) {
+          throw new Error(
+            "El servidor devolvió un historial con formato incorrecto.",
+          );
+        }
 
         if (!cancelled) {
           const orderedMoves = [...response].sort(
             (a, b) => a.ply - b.ply,
           );
 
+          console.log(
+            "[GameReview] Movimientos recuperados:",
+            orderedMoves.length,
+          );
+
           setMoves(orderedMoves);
           setCurrentIndex(0);
         }
-      } catch {
+      } catch (caughtError) {
+        console.error(
+          "[GameReview] Error al cargar movimientos:",
+          caughtError,
+        );
+
         if (!cancelled) {
           setError(
-            "No se pudo cargar el historial de movimientos.",
+            caughtError instanceof Error
+              ? caughtError.message
+              : "No se pudo cargar el historial de movimientos.",
           );
         }
       } finally {
@@ -157,15 +206,20 @@ export function GameReview({
     return () => {
       cancelled = true;
     };
-  }, [game.id]);
+  }, [game.id, reloadKey]);
 
-  // Inicializar el servicio de Stockfish.
+  // ========================================
+  // INICIALIZAR STOCKFISH
+  // ========================================
+
   useEffect(() => {
     const engine = new StockfishService();
+
     stockfishRef.current = engine;
 
     return () => {
       analysisRequestRef.current += 1;
+
       engine.destroy();
 
       if (stockfishRef.current === engine) {
@@ -173,6 +227,10 @@ export function GameReview({
       }
     };
   }, []);
+
+  // ========================================
+  // POSICIÓN ACTUAL
+  // ========================================
 
   const currentMove =
     currentIndex > 0
@@ -185,12 +243,20 @@ export function GameReview({
   const canGoBack = currentIndex > 0;
   const canGoForward = currentIndex < moves.length;
 
-  // Limpiar resultados cuando cambia la posición.
-  useEffect(() => {
-    analysisRequestRef.current += 1;
-    setEvaluation(null);
-    setAnalysisError(null);
-  }, [currentFen]);
+  // Solo mostrar resultados de la posición seleccionada.
+  const visibleEvaluation =
+    analysisResult?.fen === currentFen
+      ? analysisResult.evaluation
+      : null;
+
+  const visibleAnalysisError =
+    analysisError?.fen === currentFen
+      ? analysisError.message
+      : null;
+
+  // ========================================
+  // NAVEGACIÓN
+  // ========================================
 
   function goToStart() {
     if (isAnalyzing) return;
@@ -199,6 +265,7 @@ export function GameReview({
 
   function goBack() {
     if (isAnalyzing) return;
+
     setCurrentIndex((index) =>
       Math.max(0, index - 1),
     );
@@ -206,6 +273,7 @@ export function GameReview({
 
   function goForward() {
     if (isAnalyzing) return;
+
     setCurrentIndex((index) =>
       Math.min(moves.length, index + 1),
     );
@@ -216,17 +284,27 @@ export function GameReview({
     setCurrentIndex(moves.length);
   }
 
+  function retryLoading() {
+    setReloadKey((key) => key + 1);
+  }
+
+  // ========================================
+  // ANALIZAR POSICIÓN CON STOCKFISH
+  // ========================================
+
   async function analyzePosition() {
     const engine = stockfishRef.current;
 
-    if (!engine || isAnalyzing) return;
+    if (!engine || isAnalyzing) {
+      return;
+    }
 
     const requestId = ++analysisRequestRef.current;
     const fenToAnalyze = currentFen;
 
     setIsAnalyzing(true);
     setAnalysisError(null);
-    setEvaluation(null);
+    setAnalysisResult(null);
 
     try {
       const result = await engine.evaluate(
@@ -235,15 +313,25 @@ export function GameReview({
       );
 
       if (requestId === analysisRequestRef.current) {
-        setEvaluation(result);
+        setAnalysisResult({
+          fen: fenToAnalyze,
+          evaluation: result,
+        });
       }
     } catch (caughtError) {
+      console.error(
+        "[GameReview] Error de Stockfish:",
+        caughtError,
+      );
+
       if (requestId === analysisRequestRef.current) {
-        setAnalysisError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "No fue posible analizar la posición.",
-        );
+        setAnalysisError({
+          fen: fenToAnalyze,
+          message:
+            caughtError instanceof Error
+              ? caughtError.message
+              : "No fue posible analizar la posición.",
+        });
       }
     } finally {
       if (requestId === analysisRequestRef.current) {
@@ -256,8 +344,13 @@ export function GameReview({
     ? getMoveType(currentMove)
     : null;
 
+  // ========================================
+  // INTERFAZ
+  // ========================================
+
   return (
     <section className="space-y-5 text-[#EADFCF]">
+
       {/* ENCABEZADO */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -290,13 +383,37 @@ export function GameReview({
         </div>
       )}
 
-      {/* ERROR */}
-      {error && (
+      {/* ERROR AL CARGAR */}
+      {!loading && error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-800 bg-red-950/50 p-4 text-red-300"
+          className="rounded-xl border border-red-800 bg-red-950/50 p-5"
         >
-          {error}
+          <h3 className="m-0 text-base font-bold text-red-300">
+            No fue posible cargar el historial
+          </h3>
+
+          <p className="mb-4 mt-2 break-words text-sm text-red-200">
+            {error}
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={retryLoading}
+              className={goldButtonClass}
+            >
+              ↻ Reintentar
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className={secondaryButtonClass}
+            >
+              Volver a la partida
+            </button>
+          </div>
         </div>
       )}
 
@@ -382,7 +499,7 @@ export function GameReview({
                     onClick={goForward}
                     disabled={!canGoForward || isAnalyzing}
                     title="Siguiente movimiento"
-                    className="min-h-10 rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-2 font-bold text-[#211712] transition hover:bg-[#F5D782] disabled:cursor-not-allowed disabled:opacity-30"
+                    className={goldButtonClass}
                   >
                     ▶
                   </button>
@@ -487,6 +604,7 @@ export function GameReview({
                         <p className="mb-1 text-xs text-[#B6A18A]">
                           Jugador
                         </p>
+
                         <p className="m-0 break-words font-semibold text-[#F0DFBF]">
                           {currentMove.color === "white"
                             ? game.white.participant.displayName
@@ -498,6 +616,7 @@ export function GameReview({
                         <p className="mb-1 text-xs text-[#B6A18A]">
                           Tipo de jugada
                         </p>
+
                         <p className="m-0 font-semibold text-[#F0DFBF]">
                           {moveType?.label}
                         </p>
@@ -507,6 +626,7 @@ export function GameReview({
                         <p className="mb-1 text-xs text-[#B6A18A]">
                           Origen
                         </p>
+
                         <p className="m-0 font-semibold text-[#E8B84B]">
                           {currentMove.from}
                         </p>
@@ -516,6 +636,7 @@ export function GameReview({
                         <p className="mb-1 text-xs text-[#B6A18A]">
                           Destino
                         </p>
+
                         <p className="m-0 font-semibold text-[#E8B84B]">
                           {currentMove.to}
                         </p>
@@ -541,6 +662,7 @@ export function GameReview({
                     <span className="text-3xl text-[#E8B84B]">
                       ♟
                     </span>
+
                     <p className="mb-0 mt-3 text-sm text-[#B6A18A]">
                       Selecciona un movimiento para consultar sus detalles.
                     </p>
@@ -573,23 +695,23 @@ export function GameReview({
                   type="button"
                   onClick={() => void analyzePosition()}
                   disabled={isAnalyzing}
-                  className="w-full rounded-lg border border-[#E8B84B] bg-[#E8B84B] px-4 py-3 font-bold text-[#211712] transition hover:bg-[#F5D782] disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${goldButtonClass} w-full`}
                 >
                   {isAnalyzing
                     ? "♟ Analizando posición..."
                     : "♛ Analizar posición"}
                 </button>
 
-                {analysisError && (
+                {visibleAnalysisError && (
                   <div
                     role="alert"
                     className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-300"
                   >
-                    {analysisError}
+                    {visibleAnalysisError}
                   </div>
                 )}
 
-                {evaluation && (
+                {visibleEvaluation && (
                   <div className="space-y-4 rounded-lg border border-[#75572A] bg-[#362718] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-[#F0DFBF]">
@@ -597,7 +719,7 @@ export function GameReview({
                       </span>
 
                       <span className="rounded-md bg-[#49331E] px-2 py-1 text-xs font-bold text-[#E8B84B]">
-                        Profundidad {evaluation.depth}
+                        Profundidad {visibleEvaluation.depth}
                       </span>
                     </div>
 
@@ -607,7 +729,7 @@ export function GameReview({
                       </p>
 
                       <p className="m-0 text-3xl font-bold text-[#E8B84B]">
-                        {formatEvaluation(evaluation)}
+                        {formatEvaluation(visibleEvaluation)}
                       </p>
 
                       <p className="mb-0 mt-2 text-xs text-[#B6A18A]">
@@ -622,7 +744,7 @@ export function GameReview({
                       </p>
 
                       <p className="m-0 text-xl font-bold text-[#F5D782]">
-                        {evaluation.bestMove ?? "No disponible"}
+                        {visibleEvaluation.bestMove ?? "No disponible"}
                       </p>
 
                       <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
