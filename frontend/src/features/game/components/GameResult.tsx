@@ -115,7 +115,7 @@ export function GameResult({
 
   // Construir URL de exportación.
   function getExportUrl(
-    format: "pgn" | "csv" | "json",
+    format: "pgn" | "csv" | "json" | "xlsx",
   ): string {
     return `${API_BASE_URL}/games/${encodeURIComponent(
       game.id,
@@ -294,7 +294,17 @@ export function GameResult({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+
+            {/* EXPORTAR EXCEL (destacado — formato con colores y estilo) */}
+            <a
+              href={getExportUrl("xlsx")}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#1D6F42] bg-[#1D6F42] px-4 py-2 text-xs font-bold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-[#237A4B] hover:shadow-lg hover:shadow-[#1D6F42]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D6F42]"
+              aria-label="Descargar partida en formato Excel con colores y formato profesional"
+            >
+              <span aria-hidden="true">📗</span>
+              Descargar Excel
+            </a>
 
             {/* EXPORTAR PGN */}
             <a
@@ -328,7 +338,8 @@ export function GameResult({
           </div>
 
           <p className="mb-0 mt-3 text-xs text-[#B6A18A]">
-            PGN: ajedrez · CSV: hojas de cálculo ·
+            Excel: formato visual con colores y hojas (resumen, movimientos,
+            intentos de IA) · PGN: ajedrez · CSV: hojas de cálculo simples ·
             JSON: datos estructurados.
           </p>
         </div>

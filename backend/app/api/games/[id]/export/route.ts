@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db/client";
 import { gameInclude, serializeGame } from "@/lib/game/dto";
+import { buildGameWorkbook } from "@/lib/game/exportXlsx";
 import { ApiError, handleRouteError } from "@/lib/http/errors";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -46,6 +47,51 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition": `attachment; filename="game-${id}.csv"`,
+        },
+      });
+    }
+
+    if (format === "xlsx") {
+      const buffer = await buildGameWorkbook(
+        {
+          id: game.id,
+          whiteParticipant: game.whiteParticipant,
+          blackParticipant: game.blackParticipant,
+          whiteDifficulty: game.whiteDifficulty,
+          blackDifficulty: game.blackDifficulty,
+          status: game.status,
+          result: game.result,
+          reason: game.reason,
+          speed: game.speed,
+          moveCount: game.moveCount,
+          startedAt: game.startedAt,
+          endedAt: game.endedAt,
+        },
+        moves.map((move) => ({
+          ply: move.ply,
+          color: move.color,
+          piece: move.piece,
+          from: move.from,
+          to: move.to,
+          san: move.san,
+          fenAfter: move.fenAfter,
+          latencyMs: move.latencyMs,
+        })),
+        aiAttempts.map((attempt) => ({
+          ply: attempt.ply,
+          provider: attempt.provider,
+          modelId: attempt.modelId,
+          difficulty: attempt.difficulty,
+          retryNumber: attempt.retryNumber,
+          outcome: attempt.outcome,
+          latencyMs: attempt.latencyMs,
+        })),
+      );
+
+      return new NextResponse(buffer, {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="game-${id}.xlsx"`,
         },
       });
     }
