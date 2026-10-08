@@ -32,8 +32,8 @@ interface Commentary {
   player: string;
   move: string;
   message: string;
+  aiAnalysis?: string;
   category: MoveCategory;
-  source: "heuristic" | "ai";
 }
 
 interface Narration {
@@ -52,7 +52,6 @@ interface PendingAiRequest {
 }
 
 const MAX_COMMENTS = 8;
-const AI_REQUEST_TIMEOUT = 12000;
 
 const NOTABLE_CATEGORIES: MoveCategory[] = [
   "capture",
@@ -84,50 +83,52 @@ const PIECE_NAMES: Record<string, string> = {
   k: "rey",
 };
 
-const INTRODUCTIONS: Record<NarratorStyle, string[]> = {
+const INTROS: Record<NarratorStyle, string[]> = {
   deportivo: [
     "¡Atención, señoras y señores!",
     "¡Se mueve el tablero!",
-    "¡Qué espectáculo estamos presenciando!",
     "¡Ojo con esta jugada!",
-    "¡La batalla continúa!",
+    "¡Tenemos acción!",
+    "¡Qué duelo de inteligencias!",
+    "¡La emoción continúa!",
     "¡Esto se pone interesante!",
     "¡Ahí viene la respuesta!",
-    "¡Tenemos acción sobre el tablero!",
-    "¡Qué duelo de inteligencias!",
-    "¡No pierdan de vista esta partida!",
-    "¡La emoción continúa!",
-    "¡Aquí tenemos otra maniobra!",
+    "¡No pierdan de vista el tablero!",
+    "¡Seguimos en vivo!",
+    "¡Nueva decisión sobre el tablero!",
+    "¡Qué ritmo llevan estos modelos!",
+    "¡La batalla continúa!",
+    "¡El enfrentamiento sigue!",
+    "¡Aquí viene otra jugada!",
+    "¡Se enciende la partida!",
+    "¡Qué intensidad!",
+    "¡Vamos con la siguiente!",
     "¡Esto no se detiene!",
-    "¡Se enciende el enfrentamiento!",
-    "¡Nueva decisión en el tablero!",
-    "¡Seguimos con este gran duelo!",
-    "¡Qué ritmo de juego!",
-    "¡La contienda sigue adelante!",
+    "¡Continúa el espectáculo!",
   ],
   profesional: [
-    "Analicemos esta jugada.",
-    "Observemos el movimiento.",
+    "Observemos esta jugada.",
+    "Analicemos el movimiento.",
     "La posición continúa evolucionando.",
     "Tenemos una nueva decisión.",
     "Veamos el desarrollo de la partida.",
     "El enfrentamiento avanza.",
-    "Una jugada más sobre el tablero.",
     "Continuamos con el análisis.",
-    "Observemos la nueva posición.",
+    "La posición presenta una nueva disposición.",
+    "Observemos el tablero.",
     "El juego sigue su curso.",
   ],
   epico: [
     "¡La batalla de las inteligencias continúa!",
     "¡El tablero vuelve a cobrar vida!",
     "¡Un nuevo capítulo comienza!",
-    "¡Las piezas entran nuevamente en acción!",
+    "¡Las piezas entran en acción!",
     "¡La contienda sigue su marcha!",
     "¡El destino de la partida continúa abierto!",
     "¡Una nueva maniobra sacude el tablero!",
     "¡La historia de este duelo sigue escribiéndose!",
     "¡El campo de batalla está preparado!",
-    "¡Cada movimiento forma parte de esta gran batalla!",
+    "¡Cada movimiento forma parte de esta batalla!",
   ],
 };
 
@@ -261,7 +262,7 @@ const PHRASES: Record<
     normal: [
       "{player} desplaza su {piece} hacia {to}.",
       "El {piece} cambia de casilla.",
-      "{player} continúa con {piece} a {to}.",
+      "{player} continúa con su {piece} hacia {to}.",
       "La nueva posición del {piece} es {to}.",
       "{player} realiza una jugada desde {from}.",
     ],
@@ -492,7 +493,7 @@ function createCommentary(
   ) {
     if (game.moveCount % 4 === 0) {
       const intro = chooseExpression(
-        INTRODUCTIONS[style],
+        INTROS[style],
         recent,
       );
       message = `${intro} ${message}`;
@@ -512,7 +513,6 @@ function createCommentary(
     move: game.lastMove ? `${from} → ${to}` : "Final",
     message,
     category,
-    source: "heuristic",
   };
 }
 
@@ -540,6 +540,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   const latestGameRef = useRef(game);
   const movesRef = useRef(moves);
+  const commentsRef = useRef<Commentary[]>([]);
 
   const previousMoveCountRef = useRef(game.moveCount);
   const lastNarratedMoveRef = useRef(game.moveCount);
@@ -548,7 +549,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   const requestedAiMovesRef = useRef(new Set<number>());
 
   const speakingRef = useRef(false);
-  const mountedRef = useRef(true);
+  const mountedRef = useRef(false);
   const sessionRef = useRef(0);
   const gameIdRef = useRef(game.id);
 
@@ -566,7 +567,6 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   const playLatestRef = useRef<() => void>(() => {});
 
-  // Control de concurrencia de Groq.
   const aiBusyRef = useRef(false);
 
   const pendingAiRequestRef =
@@ -574,9 +574,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
   const aiRequestVersionRef = useRef(0);
 
-  // Una solicitud HTTP no se considera terminada
-  // hasta que su promesa se resuelve o rechaza.
-  const activeAiPromiseRef = useRef<Promise<void> | null>(null);
+  const activeAiPromiseRef =
+    useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     latestGameRef.current = game;
@@ -660,8 +659,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       utterance.pitch = isExciting ? 1.15 : 1.05;
       utterance.volume = 1;
 
-      lastNarratedMoveRef.current =
-        latestGameRef.current.moveCount;
+      // Registrar el movimiento realmente narrado.
+      lastNarratedMoveRef.current = comment.moveNumber;
 
       setCurrentNarration({
         text: comment.message,
@@ -685,6 +684,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         setIsSpeaking(false);
         setCurrentNarration(null);
 
+        // Al terminar, saltar a la última jugada disponible.
         if (automatic) playLatestRef.current();
       };
 
@@ -707,21 +707,25 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     const latest = latestGameRef.current;
 
     if (latest.speed === "maximum") return;
-    if (latest.moveCount <= lastNarratedMoveRef.current) return;
 
-    const latestMove = movesRef.current.find(
-      (move) => move.ply === latest.moveCount,
+    if (
+      latest.moveCount <= lastNarratedMoveRef.current
+    ) {
+      return;
+    }
+
+    // Utilizar exactamente el comentario de la tarjeta.
+    const existingComment = commentsRef.current.find(
+      (comment) => comment.moveNumber === latest.moveCount,
     );
 
-    const commentary = createCommentary(
-      latest,
-      latestMove,
-      narratorStyleRef.current,
-      recentExpressionsRef.current,
-      lastNarratedMoveRef.current,
-    );
+    if (existingComment) {
+      speakText(existingComment);
+      return;
+    }
 
-    speakText(commentary);
+    // Si todavía no hay comentario, esperar al efecto
+    // que lo crea, en lugar de generar otra frase aleatoria.
   }, [speakText]);
 
   useEffect(() => {
@@ -793,13 +797,11 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   }, []);
 
   // ==========================================
-  // COLA INTELIGENTE DE GROQ
+  // COLA DE GROQ
   // ==========================================
 
   const processAiRequest = useCallback(
     (request: PendingAiRequest) => {
-      // Mientras hay una solicitud activa, guardar
-      // solamente la jugada importante más reciente.
       if (aiBusyRef.current) {
         pendingAiRequestRef.current = request;
         return;
@@ -828,23 +830,9 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             setAiStatusMove(activeRequest.moveNumber);
 
             try {
-              // El timeout limita la espera visual, pero
-              // no cancela la solicitud HTTP del backend.
-              let timeoutId: number | undefined;
-
-              const timeoutPromise = new Promise<never>(
-                (_, reject) => {
-                  timeoutId = window.setTimeout(() => {
-                    reject(
-                      new Error(
-                        "Groq tardó demasiado en responder.",
-                      ),
-                    );
-                  }, AI_REQUEST_TIMEOUT);
-                },
-              );
-
-              const httpPromise = requestAiCommentary(
+              // Esperar el HTTP real para evitar solicitudes
+              // simultáneas. El backend controla sus tiempos.
+              const response = await requestAiCommentary(
                 activeRequest.gameId,
                 {
                   fen: activeRequest.fen,
@@ -855,25 +843,6 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                   },
                 },
               );
-
-              // Esperar el resultado o el timeout.
-              // Si ocurre timeout, esperar además el fin
-              // real de HTTP antes de iniciar otra petición.
-              let response: Awaited<typeof httpPromise>;
-
-              try {
-                response = await Promise.race([
-                  httpPromise,
-                  timeoutPromise,
-                ]);
-              } catch (error) {
-                await httpPromise.catch(() => undefined);
-                throw error;
-              } finally {
-                if (timeoutId !== undefined) {
-                  window.clearTimeout(timeoutId);
-                }
-              }
 
               if (
                 !mountedRef.current ||
@@ -891,13 +860,13 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                 );
               }
 
+              // Groq nunca reemplaza la narración local.
               setComments((current) =>
                 current.map((comment) =>
                   comment.moveNumber === activeRequest.moveNumber
                     ? {
                         ...comment,
-                        message: text,
-                        source: "ai",
+                        aiAnalysis: text,
                         category: activeRequest.category,
                       }
                     : comment,
@@ -923,7 +892,6 @@ export function AiCommentator({ game }: AiCommentatorProps) {
               setAiStatusMove(activeRequest.moveNumber);
             }
 
-            // Solo conservar la última jugada pendiente.
             currentRequest = pendingAiRequestRef.current;
             pendingAiRequestRef.current = null;
           }
@@ -935,14 +903,13 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
       const operation = processQueue();
       activeAiPromiseRef.current = operation;
-
       void operation;
     },
     [],
   );
 
   // ==========================================
-  // REINICIAR AL CAMBIAR DE PARTIDA
+  // CAMBIO DE PARTIDA
   // ==========================================
 
   useEffect(() => {
@@ -960,6 +927,8 @@ export function AiCommentator({ game }: AiCommentatorProps) {
     aiRequestVersionRef.current += 1;
     pendingAiRequestRef.current = null;
 
+    commentsRef.current = [];
+
     setComments([]);
     setMoves([]);
     setAiStatus("idle");
@@ -967,7 +936,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   }, [game.id, game.moveCount, stopSpeaking]);
 
   // ==========================================
-  // CONSULTAR HISTORIAL
+  // CARGAR MOVIMIENTOS
   // ==========================================
 
   useEffect(() => {
@@ -998,7 +967,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   }, [game.id, game.moveCount]);
 
   // ==========================================
-  // COMENTARIO LOCAL INMEDIATO
+  // CREAR COMENTARIO LOCAL UNA SOLA VEZ
   // ==========================================
 
   useEffect(() => {
@@ -1007,6 +976,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       return;
     }
 
+    const previousCount = previousMoveCountRef.current;
     previousMoveCountRef.current = game.moveCount;
 
     if (!game.lastMove) return;
@@ -1020,20 +990,30 @@ export function AiCommentator({ game }: AiCommentatorProps) {
       latestMove,
       narratorStyleRef.current,
       recentExpressionsRef.current,
-      Math.max(0, game.moveCount - 1),
+      lastNarratedMoveRef.current,
     );
 
-    setComments((current) =>
-      [commentary, ...current]
+    // Si se saltaron movimientos, el comentario ya
+    // resume el intervalo respecto a la última narración.
+    if (game.moveCount > previousCount) {
+      const updatedComments = [
+        commentary,
+        ...commentsRef.current.filter(
+          (item) => item.moveNumber !== commentary.moveNumber,
+        ),
+      ]
         .sort((a, b) => b.moveNumber - a.moveNumber)
-        .slice(0, MAX_COMMENTS),
-    );
+        .slice(0, MAX_COMMENTS);
+
+      commentsRef.current = updatedComments;
+      setComments(updatedComments);
+    }
 
     playLatest();
   }, [game, playLatest]);
 
   // ==========================================
-  // DETECTAR JUGADAS IMPORTANTES PARA GROQ
+  // DETECTAR JUGADAS PARA GROQ
   // ==========================================
 
   useEffect(() => {
@@ -1047,9 +1027,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
     const category = getMoveCategory(move, game);
 
-    if (!NOTABLE_CATEGORIES.includes(category)) {
-      return;
-    }
+    if (!NOTABLE_CATEGORIES.includes(category)) return;
 
     if (requestedAiMovesRef.current.has(game.moveCount)) {
       return;
@@ -1057,16 +1035,14 @@ export function AiCommentator({ game }: AiCommentatorProps) {
 
     requestedAiMovesRef.current.add(game.moveCount);
 
-    const request: PendingAiRequest = {
+    processAiRequest({
       gameId: game.id,
       moveNumber: game.moveCount,
       fen: game.fen,
       from: game.lastMove.from,
       to: game.lastMove.to,
       category,
-    };
-
-    processAiRequest(request);
+    });
   }, [game, moves, processAiRequest]);
 
   function toggleVoice() {
@@ -1086,6 +1062,20 @@ export function AiCommentator({ game }: AiCommentatorProps) {
   function listenManually(comment: Commentary) {
     stopSpeaking();
     speakText(comment, false);
+  }
+
+  function listenAiAnalysis(comment: Commentary) {
+    if (!comment.aiAnalysis) return;
+
+    stopSpeaking();
+
+    speakText(
+      {
+        ...comment,
+        message: comment.aiAnalysis,
+      },
+      false,
+    );
   }
 
   const spanishVoices = voices.filter((voice) =>
@@ -1120,14 +1110,14 @@ export function AiCommentator({ game }: AiCommentatorProps) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="m-0 text-xs font-bold text-[#E8B84B]">
-              ✨ Motor de comentarios Groq
+              ✨ Motor de análisis Groq
             </p>
 
             <p className="mb-0 mt-1 text-xs text-[#B6A18A]">
               {aiStatus === "generating"
-                ? `Analizando movimiento ${aiStatusMove ?? ""} con IA...`
+                ? `Analizando movimiento ${aiStatusMove ?? ""}...`
                 : aiStatus === "success"
-                  ? "Último comentario IA recibido correctamente."
+                  ? "Último análisis IA recibido correctamente."
                   : aiStatus === "error"
                     ? "Groq no disponible. Narración local activa."
                     : "Narración local lista. IA para jugadas importantes."}
@@ -1167,7 +1157,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
               {game.speed === "maximum"
                 ? "Sin narración automática en velocidad máxima."
                 : voiceEnabled
-                  ? "Comentarios deportivos sin cola acumulada."
+                  ? "Comentarios deportivos sincronizados."
                   : "La narración automática está desactivada."}
             </p>
           </div>
@@ -1202,9 +1192,15 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             }
             className="w-full rounded-lg border border-[#62492E] bg-[#1B130F] px-3 py-2 text-xs text-[#F0DFBF]"
           >
-            <option value="deportivo">⚽ Deportivo — Emocionante</option>
-            <option value="profesional">♟ Profesional — Analítico</option>
-            <option value="epico">🔥 Épico — Dramático</option>
+            <option value="deportivo">
+              ⚽ Deportivo — Emocionante
+            </option>
+            <option value="profesional">
+              ♟ Profesional — Analítico
+            </option>
+            <option value="epico">
+              🔥 Épico — Dramático
+            </option>
           </select>
         </div>
 
@@ -1274,6 +1270,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
             <span className="text-xs font-bold uppercase tracking-wide text-[#E8B84B]">
               🔊 Narrando ahora · Movimiento {currentNarration.moveNumber}
             </span>
+
             <button
               type="button"
               onClick={stopSpeaking}
@@ -1327,7 +1324,7 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                     {CATEGORY_LABELS[comment.category]}
                   </span>
 
-                  {comment.source === "ai" && (
+                  {comment.aiAnalysis && (
                     <span className="rounded-md border border-purple-500/40 bg-purple-950/40 px-2 py-1 text-[10px] font-bold text-purple-300">
                       ✨ IA
                     </span>
@@ -1338,24 +1335,51 @@ export function AiCommentator({ game }: AiCommentatorProps) {
                   <strong className="text-sm text-[#F0DFBF]">
                     {comment.player}
                   </strong>
+
                   <code className="rounded-md border border-[#59412A] bg-[#211712] px-3 py-1 text-xs font-bold text-[#E8B84B]">
                     {comment.move}
                   </code>
                 </div>
 
-                <p className="m-0 text-sm leading-relaxed text-[#D9C5A7]">
-                  {comment.message}
-                </p>
+                {/* TEXTO EXACTO DEL NARRADOR */}
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#E8B84B]">
+                    🔊 Comentario del narrador
+                  </p>
 
-                <div className="mt-4">
+                  <p className="m-0 text-sm leading-relaxed text-[#D9C5A7]">
+                    {comment.message}
+                  </p>
+
                   <button
                     type="button"
                     onClick={() => listenManually(comment)}
-                    className="rounded-lg border border-[#75572A] bg-[#49331E] px-4 py-2 text-xs font-semibold text-[#F5D782] transition hover:bg-[#624529]"
+                    className="mt-3 rounded-lg border border-[#75572A] bg-[#49331E] px-4 py-2 text-xs font-semibold text-[#F5D782] transition hover:bg-[#624529]"
                   >
                     🔊 Escuchar comentario
                   </button>
                 </div>
+
+                {/* ANÁLISIS SEPARADO DE GROQ */}
+                {comment.aiAnalysis && (
+                  <div className="mt-4 rounded-lg border border-purple-500/30 bg-purple-950/20 p-3">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-purple-300">
+                      ✨ Análisis de Groq
+                    </p>
+
+                    <p className="m-0 text-sm leading-relaxed text-[#E9D5FF]">
+                      {comment.aiAnalysis}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => listenAiAnalysis(comment)}
+                      className="mt-3 rounded-lg border border-purple-500/40 bg-purple-950/40 px-3 py-2 text-xs font-semibold text-purple-200 transition hover:bg-purple-900/50"
+                    >
+                      🔊 Escuchar análisis IA
+                    </button>
+                  </div>
+                )}
               </article>
             ))}
           </div>
