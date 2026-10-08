@@ -165,10 +165,12 @@ function App() {
                 moveCount={game.moveCount}
               />
 
-              <GameResult
-                game={game}
-                onNewGame={handleNewGame}
-              />
+              <div className="chess-result-theme">
+  <GameResult
+    game={game}
+    onNewGame={handleNewGame}
+  />
+</div>
 
               {/* ANÁLISIS */}
               {isGameFinished && (

@@ -213,4 +213,54 @@
     height: 40px;
     font-size: 25px;
   }
+
+  
+/* ==========================================
+   CORRECCION VISUAL - RESULTADO DE PARTIDA
+========================================== */
+
+.chess-result-theme section {
+  background-color: #241a15 !important;
+  border: 1px solid #75572a !important;
+  color: #eadfce !important;
+  border-radius: 12px;
+}
+
+.chess-result-theme h2,
+.chess-result-theme h3 {
+  color: #e8b84b !important;
+}
+
+.chess-result-theme .bg-blue-50,
+.chess-result-theme .bg-blue-100 {
+  background-color: #362718 !important;
+  color: #f5d782 !important;
+  border: 1px solid #75572a !important;
+}
+
+.chess-result-theme .text-blue-900,
+.chess-result-theme .text-slate-900 {
+  color: #f5d782 !important;
+}
+
+.chess-result-theme dt {
+  color: #b6a18a !important;
+}
+
+.chess-result-theme dd {
+  color: #f0dfbf !important;
+}
+
+.chess-result-theme button {
+  background-color: #e8b84b !important;
+  border: 1px solid #e8b84b !important;
+  color: #211712 !important;
+  font-weight: 700;
+  border-radius: 9px;
+}
+
+.chess-result-theme button:hover {
+  background-color: #f5d782 !important;
+}
+
 }
