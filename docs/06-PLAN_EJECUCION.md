@@ -4,6 +4,15 @@ Del **2026-09-25** (hoy) al **2026-10-08** (cierre interno, un día antes de la 
 del 2026-10-09). Basado en el reparto confirmado en `03-FRENTES_CHECKLIST.md` y en las decisiones
 registradas en `05-DECISIONES.md`.
 
+> **Estado real al 2026-10-09** (este plan se conserva tal cual se escribió el día 1, como registro
+> histórico — ver `03-FRENTES_CHECKLIST.md` para el checklist actualizado con el estado real de cada
+> tarea). Resumen: Frentes 1, 2 y 3 quedaron prácticamente completos, incluyendo trabajo que no estaba
+> en este plan original (modal de resultado, auditoría UI/UX completa, exportación en Excel,
+> Stockfish). Lo que **no** se completó según lo planeado: el "modo torneo" de la Semana 2 nunca se
+> construyó, por lo que Frente 4 no pudo correr el barrido completo de combinaciones ni escribir el
+> análisis de resultados — ese sigue siendo el pendiente más importante antes de la presentación. El
+> warm-up de Neon (RNF-04) tampoco se implementó. La herramienta de gestión de tareas nunca se eligió.
+
 ## Bloqueos a resolver antes de arrancar a programar
 
 | Bloqueo | Frente(s) que bloquea | Estado en `05-DECISIONES.md` | Qué falta |

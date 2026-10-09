@@ -1,5 +1,12 @@
 # Plan: cerrar gaps de la rúbrica — estadísticas, exportación, comentarista real
 
+> ✅ **RESUELTO — 2026-10-09.** Jorge completó los 3 puntos (estadísticas, exportación,
+> comentarista conectado a un LLM real). Jean Marco auditó el resultado y encima mejoró la
+> estructura de los documentos exportados (Excel con colores, fix de un bug real del CSV en Excel) e
+> hizo una auditoría de UI/UX completa sobre toda la app — ver `05-DECISIONES.md`, filas del
+> 2026-10-09. Este documento se conserva como referencia de qué se pidió y por qué, no como tarea
+> pendiente.
+
 > Para Jorge. Este documento es autocontenido: no necesitas haber visto la conversación de la que
 > salió, solo el código del repo (`backend/` y `frontend/`) y el enunciado/rúbrica del proyecto.
 

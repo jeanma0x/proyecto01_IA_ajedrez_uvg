@@ -1,7 +1,8 @@
 # Arquitectura — Duelo de Inteligencias
 
-> Estado: **propuesta del equipo, pendiente de aprobación final**. Ver `05-DECISIONES.md` para el
-> estado real de cada elección antes de asumir que algo está cerrado.
+> **Actualizado 2026-10-09 — implementada, no ya "propuesta".** Este documento describe la
+> arquitectura real del sistema tal como quedó construida. Ver `05-DECISIONES.md` para la bitácora
+> completa de cómo se llegó aquí (incluye decisiones descartadas en el camino).
 
 ## Principio de diseño
 
@@ -10,37 +11,43 @@ proveedores de IA: todas las llamadas pasan por el backend, que guarda las clave
 movimiento y orquesta los adaptadores de cada proveedor. Esto protege las API keys y permite cambiar
 de proveedor sin tocar el frontend ni el motor de reglas.
 
-**Despliegue: Vercel (frontend + backend) con base de datos en Neon (Postgres serverless).**
-Decisión confirmada el 25 de septiembre de 2026 — reemplaza la idea inicial de ejecución 100% local
-con SQLite. Ver `05-DECISIONES.md`.
+**Despliegue: dos proyectos separados en Vercel — `duelo-inteligencias-backend` (Next.js) y
+`duelo-inteligencias-frontend` (Vite/React) — con base de datos compartida en Neon (Postgres
+serverless).** Decisión de hosting confirmada el 25 de septiembre de 2026 (reemplazó la idea inicial
+de ejecución 100% local con SQLite); el backend en Next.js se confirmó el 1 de octubre de 2026. Ver
+`05-DECISIONES.md`.
 
 ```
-[ Navegador ] --HTTPS--> [ Backend en Vercel (autoridad) ] --API--> [ Google / Anthropic / OpenAI (Groq) ]
-                                    |
-                                    v
-                           [ Neon (Postgres serverless) ]
+[ Navegador ] --HTTPS--> [ Frontend (Vite/React, Vercel) ] --HTTPS/CORS--> [ Backend (Next.js, Vercel, autoridad) ]
+                                                                                    |              |
+                                                                                    v              v
+                                                                    [ Google / Anthropic / OpenAI ]   [ Neon (Postgres) ]
+                                                                                    |
+                                                                                    v
+                                                                    [ Groq — solo comentarista, aislado del juego ]
 ```
 
-> ⚠️ Pendiente de decidir: Vercel corre funciones serverless, no un servidor Express persistente de
-> forma nativa. Hay que confirmar si el backend se implementa como **API routes de Next.js** (lo más
-> idiomático en Vercel) o se mantiene Express empaquetado como función serverless. Ver nota en la
-> tabla de stack más abajo.
+Nota: el tercer modelo jugable (OpenAI `gpt-5-nano`) se llama **directo**, no vía Groq — Groq quedó
+reservado únicamente para el modo comentarista (narración de texto, sin efecto en el juego), a
+propósito, para que una falla ahí nunca pueda tumbar una partida real. Ver `04-MODELOS_PENDIENTE.md`.
 
-## Stack propuesto
+## Stack real
 
 | Capa | Elección | Justificación |
 | --- | --- | --- |
 | Lenguaje | TypeScript | Un solo lenguaje tipado en frontend y backend |
-| Frontend | React + Vite, **o Next.js si se adopta para encajar con Vercel** | Interfaz reactiva, tablero en tiempo real — ver nota de pendiente arriba |
-| Tablero | `react-chessboard` o equivalente | Visual + drag and drop; validar compatibilidad antes de fijarlo |
-| Backend | Node.js + Express **empaquetado como función serverless**, o API routes de Next.js | Expone API, guarda secretos, orquesta proveedores — decisión pendiente entre las dos opciones |
-| Reglas de ajedrez | `chess.js` | Movimientos legales, FEN, SAN, estados terminales — no reinventar reglas |
-| Base de datos | **Neon (Postgres serverless) + Prisma** | Hosting: Vercel + Neon (confirmado). Reemplaza la propuesta original de SQLite local |
-| Hosting | **Vercel** | Frontend y backend en la misma plataforma; despliegue continuo desde GitHub |
-| Gráficas | Chart.js | Victorias, empates, duración, movimientos |
-| Pruebas | Vitest (unitarias) + Playwright (end-to-end) | Reglas críticas y adaptadores con pruebas automatizadas |
-| Control de versiones | Git + GitHub (repo privado recomendado) | Material académico |
-| Gestión de trabajo | Jira o Azure Boards | Épicas, historias, tareas, seguimiento |
+| Frontend | React + Vite (`frontend/`) | Interfaz reactiva, tablero en tiempo real; proyecto Vercel separado del backend |
+| Tablero | `react-chessboard` v5 | Visual + drag and drop; piezas SVG (no emoji), resaltado de jugadas y jaque |
+| Íconos | `lucide-react` | SVG, no emoji — decisión 2026-10-09 tras encontrar renderizado inconsistente de emojis entre entornos |
+| Backend | **API routes / Route Handlers de Next.js** (`backend/`), proyecto Vercel separado | Expone la API, guarda secretos, orquesta los adaptadores de IA — confirmado 2026-10-01, no Express |
+| Reglas de ajedrez | `chess.js` | Movimientos legales, FEN, SAN, estados terminales, detección de jaque — no se reinventan reglas |
+| Base de datos | **Neon (Postgres serverless) + Prisma** | Compartida entre ambos despliegues; reemplazó la propuesta original de SQLite local |
+| Hosting | **Vercel** (dos proyectos) | Auto-deploy en push a `develop` activado solo para el frontend; backend se despliega manual a propósito |
+| Análisis de posición | Stockfish 19 (WebAssembly, en el navegador) | Evaluación de jugadas en el revisor de partida — no requiere backend |
+| Exportación | `exceljs` (Excel con colores) + generación manual de CSV/PGN/JSON | Ver `backend/lib/game/exportXlsx.ts` |
+| Pruebas | **Pendiente** — no hay Vitest ni Jest instalados (RNF-17 sin cerrar) | Única verificación existente: scripts manuales (`backend/scripts/test-ten-moves.ts`) y pruebas end-to-end manuales con `curl`/Playwright durante el desarrollo |
+| Control de versiones | Git + GitHub (`jeanma0x/proyecto01_IA_ajedrez_uvg`) | Material académico |
+| Gestión de trabajo | **Pendiente** — nunca se eligió Jira/Azure Boards/otra | No bloqueó el desarrollo |
 
 ## Modelo de datos (entidades principales)
 
@@ -55,17 +62,20 @@ con SQLite. Ver `05-DECISIONES.md`.
 | `AppSetting` | key, value | Velocidades, timeouts, límites no secretos |
 
 **Relaciones:** `Game` referencia dos `Participant`; `Game` contiene muchos `Move`, `AiAttempt` y
-`Commentary`. `Statistic` se deriva de `Game`+`Move` para evitar discrepancias — no se guarda a mano.
-Las API keys **nunca** viven en estas entidades.
+`Commentary`. `Statistic` se calcula en caliente a partir de `Game`+`Move`
+(`backend/lib/game/statistics.ts::computeStatistics`) — nunca se guarda a mano, así no hay
+discrepancias. Las API keys **nunca** viven en estas entidades.
 
-*Pendiente:* diagrama entidad-relación formal y diccionario de datos completo (tipos, claves,
-nulabilidad, restricciones de unicidad/rango, enumeraciones).
+*Sigue pendiente:* diagrama entidad-relación formal y diccionario de datos completo (tipos, claves,
+nulabilidad, restricciones de unicidad/rango, enumeraciones) — el esquema real y completo vive en
+`backend/prisma/schema.prisma`, que es la fuente de verdad mientras no exista el diagrama.
 
 ## Contrato común de los adaptadores de IA
 
-Cada proveedor (Google, Anthropic, OpenAI/Groq, o el que se apruebe) se integra detrás de la
-misma interfaz, para poder sustituir uno sin tocar el resto del sistema — ver `04-MODELOS_PENDIENTE.md`
-para el historial de reemplazos (DeepSeek → Groq, Mistral → Anthropic) y por qué.
+Cada proveedor (Google, Anthropic, OpenAI) se integra detrás de la misma interfaz
+(`backend/lib/adapters/types.ts::AiAdapter`), para poder sustituir uno sin tocar el resto del sistema
+— ver `04-MODELOS_PENDIENTE.md` para el historial completo de reemplazos (DeepSeek → Groq → OpenAI
+directo; Mistral → Anthropic) y por qué.
 
 - **Entrada:** `gameId`, FEN, color, movimientos legales (opcional), nivel, historial resumido, timeout.
 - **Salida válida:** objeto `{ from, to, promotion? }` — nunca texto libre sin parsear.
@@ -80,17 +90,24 @@ para el historial de reemplazos (DeepSeek → Groq, Mistral → Anthropic) y por
 
 ## Niveles de juego (perfiles de prompting, no fuerza real de ajedrez)
 
-| Nivel | Configuración propuesta |
-| --- | --- |
-| Principiante | Contexto reducido + lista completa de movimientos legales; prompt que prioriza velocidad; temperatura alta si el proveedor la admite |
-| Avanzado | Posición + historial reciente; tiempo moderado para "analizar"; temperatura media/baja |
-| Maestro | Contexto completo; instrucción de comparar candidatos; temperatura baja; mayor presupuesto de salida dentro de cuota |
+Implementado en `backend/lib/adapters/prompt.ts::DIFFICULTY_PROFILES`:
+
+| Nivel | Temperatura | Presupuesto de tokens | Instrucción |
+| --- | --- | --- | --- |
+| Principiante | 0.9 | 600 | "Elige rápidamente una jugada legal razonable. No expliques tu razonamiento." |
+| Avanzado | 0.5 | 900 | "Analiza brevemente la posición antes de decidir tu jugada." |
+| Maestro | 0.2 | 1200 | "Compara al menos dos jugadas candidatas y elige la mejor antes de responder." |
+
+(OpenAI `gpt-5-nano`, al ser un modelo de razonamiento, usa un piso más alto —
+`max(presupuesto, 1500)` — y `reasoning_effort: "low"`; ver `04-MODELOS_PENDIENTE.md`.)
 
 Importante: estos son **nombres de perfiles del sistema**, no una afirmación de que el LLM juega al
 nivel de un maestro de ajedrez real. La rúbrica exige diferencia *observable* entre niveles, respaldada
-con evidencia de las pruebas — no una promesa de fuerza de juego.
+con evidencia de las pruebas — no una promesa de fuerza de juego. **Pendiente:** no se ha hecho una
+comparación formal documentada de qué tan distinto juega cada modelo entre sus 3 niveles (parte del
+análisis de resultados que depende del modo torneo, ver `05-DECISIONES.md`).
 
-## Endpoints propuestos (contrato preliminar — falta cerrar esquemas y códigos de error)
+## Endpoints reales
 
 | Método | Ruta | Propósito |
 | --- | --- | --- |
@@ -100,14 +117,18 @@ con evidencia de las pruebas — no una promesa de fuerza de juego.
 | POST | `/api/games/:id/ai-move` | Solicitar turno de IA |
 | PATCH | `/api/games/:id/control` | Pausar, reanudar o cambiar velocidad |
 | GET | `/api/games/:id/moves` | Consultar historial |
-| GET | `/api/statistics` | Consultar métricas filtradas |
-| GET | `/api/games/:id/export` | Exportar PGN, JSON o CSV |
+| GET | `/api/statistics` | Consultar métricas filtradas (por participante y/o nivel) |
+| GET | `/api/games/:id/export?format=` | Exportar `pgn`, `csv`, `json` o `xlsx` (Excel con colores) |
+| POST | `/api/games/:id/commentary` | Generar un comentario de narrador (Groq) para un movimiento — aislado del flujo de juego real |
+| GET | `/api/participants` | Listar los participantes disponibles (humano + 3 IA) |
+| GET | `/api/health` | Chequeo de salud del backend |
 
 ## Seguridad y manejo de secretos
 
-- Las claves (`GEMINI_API_KEY`, `MISTRAL_API_KEY`, `OPENROUTER_API_KEY`, `DATABASE_URL` de Neon, etc.)
-  viven **solo** como variables de entorno del proyecto en Vercel (y en `.env.local` para desarrollo
-  local) — nunca en el frontend, el repositorio, logs o capturas.
+- Las claves reales (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GROQ_API_KEY` — esta
+  última solo para el comentarista —, `DATABASE_URL` de Neon) viven **solo** como variables de
+  entorno del proyecto en Vercel (y en `backend/.env` para desarrollo local, gitignored) — nunca en el
+  frontend, el repositorio, logs o capturas.
 - `.env*` va en `.gitignore`; se publica un `.env.example` sin secretos reales.
 - Cualquier clave expuesta se revoca y regenera de inmediato.
 - Sanear logs, mensajes de error y capturas de pantalla antes de la presentación (RNF-08, RNF-09,

@@ -43,15 +43,19 @@ una partida de ajedrez.
 - Tres niveles configurables por IA (principiante / avanzado / maestro) con diferencia observable.
 - Aceleración configurable cuando ambos participantes son IA.
 - Persistencia local de partidas y estadísticas.
-- Pruebas comparativas entre **todas** las combinaciones posibles de IA y niveles.
-- Modo comentarista IA como funcionalidad adicional (a confirmar por el equipo).
-- Material y guion de apoyo para una presentación de 30 minutos.
+- Pruebas comparativas entre **todas** las combinaciones posibles de IA y niveles — **pendiente al
+  2026-10-09**: no existe aún el "modo torneo" que las corra automáticamente, ver `05-DECISIONES.md`.
+- Modo comentarista IA como funcionalidad adicional — **confirmado e implementado** el 2026-10-09,
+  con voz y conectado a un LLM real (Groq), ver `05-DECISIONES.md`.
+- Material y guion de apoyo para una presentación de 30 minutos — **pendiente de iniciar**.
 
 ## Fuera del alcance
 
 - Hosting público permanente, apps móviles nativas, publicación en tiendas.
 - Sistema de cuentas, autenticación de usuarios o multijugador por Internet.
-- Pagos, suscripciones o consumo deliberado de APIs de pago.
+- Pagos, suscripciones o consumo deliberado de APIs de pago — **excepción documentada**: los 3
+  modelos de IA finales terminaron siendo de pago por necesidad de confiabilidad, no por elección
+  inicial. Ver restricción de RNF-16 más abajo y `05-DECISIONES.md`.
 - Entrenamiento o fine-tuning de modelos de lenguaje.
 - Motor de ajedrez propio (usar librería) o sustituir a los LLM por Stockfish como "jugador".
 - Emparejamiento automático de rivales sin acción explícita del usuario.
@@ -65,8 +69,12 @@ una partida de ajedrez.
   no solo su frente de trabajo.
 - Las IA deben usar alternativas **gratuitas** y requieren conexión a Internet; las cuotas y
   disponibilidad de los modelos pueden cambiar sin aviso — no congelar la elección hasta comprobarla.
-- Vercel y Neon también deben mantenerse dentro de sus capas gratuitas (RNF-16) — verificar límites
-  antes de dar por cerrado el despliegue.
+  **Excepción documentada conscientemente por el equipo:** los 3 modelos finales (Gemini, Claude
+  Haiku, GPT-5 Nano) terminaron siendo de pago ($5 cada uno) porque sus cuotas gratuitas no fueron
+  confiables bajo las pruebas del equipo — ver el detalle completo y la justificación en
+  `05-DECISIONES.md`, necesario tenerlo claro para responder preguntas del docente sobre RNF-16.
+- Vercel y Neon también deben mantenerse dentro de sus capas gratuitas (RNF-16) — Vercel pasó a plan
+  Pro durante el desarrollo (necesario para el backend); Neon se mantiene en capa gratuita.
 - No se requiere entrega escrita formal, pero sí material visual de apoyo bien estructurado.
 
 ## Ponderación (25 puntos totales, ver rúbrica completa)
