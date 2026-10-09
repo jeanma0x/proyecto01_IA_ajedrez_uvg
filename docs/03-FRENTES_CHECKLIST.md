@@ -89,8 +89,9 @@ no solo el propio.
 - [x] Endpoints definidos y probados (ver tabla actualizada en `01-ARQUITECTURA.md`)
 - [x] Manejo seguro de claves: `.env`, `.gitignore`, `.env.example` (RNF-08, RNF-09)
 - [x] Incidencias técnicas registradas aparte, no cuentan como derrota deportiva (RN-08, RN-09)
-- [ ] Pruebas automatizadas de reglas críticas y adaptadores (RNF-17) — no existen aún (ni Vitest ni
-      Jest instalados); la única verificación hecha es manual/script (`scripts/test-ten-moves.ts`)
+- [x] Pruebas automatizadas de reglas críticas y adaptadores (RNF-17) — Vitest, 28 casos: motor de
+      reglas (jaque, mate, ahogado, enroque, promoción, al paso, rechazo de ilegales) y validación de
+      la respuesta de la IA antes de aceptarla. `npm test` en `backend/`
 
 ## Frente 4 · Funcionalidad adicional, análisis y presentación
 *El diferenciador creativo y el cierre del proyecto.*
@@ -132,8 +133,9 @@ torneo (barrido automático de combinaciones) y, con esos datos, el análisis co
 modelos. Sin esto, Frente 4 no tiene con qué sustentar el 10% de "análisis de resultados" más allá de
 partidas sueltas.
 
-**Housekeeping pendiente, no bloquea la demo pero sí preguntas del docente**: pruebas automatizadas
-(RNF-17) y la elección de herramienta de gestión de tareas (nunca se decidió, ver `05-DECISIONES.md`).
+**Housekeeping pendiente, no bloquea la demo**: la elección de herramienta de gestión de tareas
+(nunca se decidió, ver `05-DECISIONES.md`) — decisión del equipo: no se espera que el docente la
+cuestione.
 
 ## Nota sobre dependencias entre frentes
 - Frente 2 y Frente 3 comparten el contrato de datos (`Move`, `AiAttempt`) — ya resuelto, mismo

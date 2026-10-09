@@ -45,7 +45,7 @@ propósito, para que una falla ahí nunca pueda tumbar una partida real. Ver `04
 | Hosting | **Vercel** (dos proyectos) | Auto-deploy en push a `develop` activado solo para el frontend; backend se despliega manual a propósito |
 | Análisis de posición | Stockfish 19 (WebAssembly, en el navegador) | Evaluación de jugadas en el revisor de partida — no requiere backend |
 | Exportación | `exceljs` (Excel con colores) + generación manual de CSV/PGN/JSON | Ver `backend/lib/game/exportXlsx.ts` |
-| Pruebas | **Pendiente** — no hay Vitest ni Jest instalados (RNF-17 sin cerrar) | Única verificación existente: scripts manuales (`backend/scripts/test-ten-moves.ts`) y pruebas end-to-end manuales con `curl`/Playwright durante el desarrollo |
+| Pruebas | **Vitest** (RNF-17 cerrado, 2026-10-09) — 28 casos: `lib/chess/engine.test.ts` (jaque, mate, ahogado, material insuficiente, enroque, las 4 promociones, al paso, rechazo de ilegales) y `lib/adapters/parse.test.ts` (validación de la respuesta de la IA) | `npm test` en `backend/`. Complementa, no reemplaza, los scripts manuales (`backend/scripts/test-ten-moves.ts`) y las pruebas end-to-end manuales con `curl`/Playwright durante el desarrollo |
 | Control de versiones | Git + GitHub (`jeanma0x/proyecto01_IA_ajedrez_uvg`) | Material académico |
 | Gestión de trabajo | **Pendiente** — nunca se eligió Jira/Azure Boards/otra | No bloqueó el desarrollo |
 
