@@ -244,6 +244,35 @@ export function ChessBoard({
   return (
     <section className="w-full max-w-[650px]">
 
+      {/* ERRORES — arriba del tablero, para que no haya que bajar hasta el
+          fondo del panel para ver un movimiento rechazado o una IA que
+          falló (ej. jugada ilegal de Gemini/Claude/GPT-5 Nano). */}
+      {error && (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-3 text-sm text-red-300"
+        >
+          {error}
+        </p>
+      )}
+
+      {aiError && (
+        <div
+          role="alert"
+          className="mb-4 flex flex-col gap-3 rounded-lg border border-red-800 bg-red-950/50 px-3 py-3 text-sm text-red-300"
+        >
+          <span>{aiError}</span>
+
+          <button
+            type="button"
+            className="min-h-11 self-start rounded-lg border border-red-700 bg-red-900/40 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-900/70"
+            onClick={requestAiTurn}
+          >
+            Reintentar movimiento
+          </button>
+        </div>
+      )}
+
       {/* TABLERO */}
       <div className="overflow-hidden rounded-lg border border-[#8A662F] bg-[#2B1E17] shadow-2xl">
         <Chessboard
@@ -382,33 +411,6 @@ export function ChessBoard({
             <p className="mb-0 mt-3 text-sm text-[#E8B84B]">
               Procesando movimiento...
             </p>
-          )}
-
-          {/* ERRORES */}
-          {error && (
-            <p
-              role="alert"
-              className="mb-0 mt-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-3 text-sm text-red-300"
-            >
-              {error}
-            </p>
-          )}
-
-          {aiError && (
-            <div
-              role="alert"
-              className="mt-4 flex flex-col gap-3 rounded-lg border border-red-800 bg-red-950/50 px-3 py-3 text-sm text-red-300"
-            >
-              <span>{aiError}</span>
-
-              <button
-                type="button"
-                className="min-h-11 self-start rounded-lg border border-red-700 bg-red-900/40 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-900/70"
-                onClick={requestAiTurn}
-              >
-                Reintentar movimiento
-              </button>
-            </div>
           )}
         </div>
       </div>

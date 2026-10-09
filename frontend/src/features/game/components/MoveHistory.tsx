@@ -5,6 +5,7 @@ import { History, Swords } from "lucide-react";
 
 import { ApiClientError } from "../../../services/api/apiClient";
 import { getMoves } from "../../../services/api/gameApi";
+import { toSpanishSan } from "../utils/chessNotation";
 
 import type { Move } from "../../../types/api";
 
@@ -99,8 +100,12 @@ export function MoveHistory({
         )}
 
         {!error && moves.length > 0 && (
-        <ol className="m-0 flex max-h-80 list-none flex-col gap-2 overflow-y-auto overscroll-contain p-0 pr-2 [scrollbar-color:#8A662F_#1B130F] [scrollbar-width:thin]">            {moves.map((move, index) => {
-              const isLatest = index === moves.length - 1;
+        <ol className="m-0 flex max-h-80 list-none flex-col gap-2 overflow-y-auto overscroll-contain p-0 pr-2 [scrollbar-color:#8A662F_#1B130F] [scrollbar-width:thin]">
+            {/* Más reciente arriba — así se ve sin tener que bajar el
+                scroll cada vez que se hace una jugada. */}
+            {[...moves].reverse().map((move, reversedIndex) => {
+              const moveNumber = moves.length - reversedIndex;
+              const isLatest = reversedIndex === 0;
               const isWhite = move.color === "white";
 
               return (
@@ -115,7 +120,7 @@ export function MoveHistory({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#59412A] bg-[#302218] text-xs font-bold text-[#E8B84B]">
-                        {index + 1}
+                        {moveNumber}
                       </span>
 
                       <div>
@@ -124,7 +129,7 @@ export function MoveHistory({
                         </span>
 
                         <strong className="mt-1 block text-base text-[#F0DFBF]">
-                          {move.san}
+                          {toSpanishSan(move.san)}
                         </strong>
                       </div>
                     </div>

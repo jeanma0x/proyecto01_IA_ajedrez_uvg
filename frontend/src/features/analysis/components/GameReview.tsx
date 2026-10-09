@@ -15,6 +15,7 @@ import {
 import { Chessboard } from "react-chessboard";
 
 import { getMoves } from "../../../services/api/gameApi";
+import { toSpanishSan } from "../../game/utils/chessNotation";
 import { StockfishService } from "../services/stockfishService";
 
 import type { GameState, Move } from "../../../types/api";
@@ -586,7 +587,7 @@ export function GameReview({
                           {move.color === "white"
                             ? ". "
                             : "... "}
-                          {move.san}
+                          {toSpanishSan(move.san)}
                         </strong>
                       </button>
                     ))}
@@ -613,7 +614,7 @@ export function GameReview({
                       </p>
 
                       <p className="m-0 text-xl font-bold text-[#E8B84B]">
-                        {currentMove.san}
+                        {toSpanishSan(currentMove.san)}
                       </p>
                     </div>
 
