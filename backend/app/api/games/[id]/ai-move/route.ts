@@ -28,6 +28,10 @@ const SERVICE_ERROR_RETRY_DELAY_MS: Partial<Record<AdapterErrorCode, number>> = 
 // partida entera como incidencia sin dar chance de reintentar. Vercel Pro
 // (Fluid Compute) soporta cientos de segundos, así que hay margen de sobra
 // para subir este límite sin arriesgar el timeout de la plataforma.
+// Se probó subir a 35s el mismo día para darle margen a gpt-5-nano con más
+// presupuesto de razonamiento (ver openai.ts): no sirvió, su latencia creció
+// hasta 27-34s y volvió a agotar el nuevo límite — ver el comentario en
+// openai.ts para el diagnóstico completo. Se deja en el valor original.
 const AI_REQUEST_TIMEOUT_MS = 20_000;
 const RECENT_HISTORY_SIZE = 10;
 

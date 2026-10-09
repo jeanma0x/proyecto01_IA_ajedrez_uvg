@@ -39,6 +39,18 @@ export class OpenAiAdapter implements AiAdapter {
           // Con "low" a veces el razonamiento se come el presupuesto
           // compartido (600-1200 según nivel) antes de llegar a la llamada
           // de función — se le da un piso más alto solo a este adaptador.
+          // Probado subir este piso a 3000 el 2026-10-09 tras ver
+          // incidencias en el torneo reducido, incluso combinado con subir
+          // AI_REQUEST_TIMEOUT_MS a 35s (ver ai-move/route.ts): no converge.
+          // La latencia de gpt-5-nano con más presupuesto crece sin tope
+          // predecible (9s -> 19s -> 27-34s según la complejidad de la
+          // posición) y siempre termina agotando el límite que se le ponga,
+          // solo que más tarde. No es un valor que se pueda afinar — es
+          // inestabilidad real del modelo bajo reasoning_effort "low" en
+          // posiciones complejas. Se deja el piso original, validado con
+          // 10/10 en la prueba de viabilidad corta (ver
+          // docs/04-MODELOS_PENDIENTE.md). La tasa de incidencia de este
+          // modelo se documenta como hallazgo del torneo, no se "arregla".
           max_completion_tokens: Math.max(profile.maxOutputTokens, 1500),
           reasoning_effort: "low",
           messages: [{ role: "user", content: buildPrompt(request) }],

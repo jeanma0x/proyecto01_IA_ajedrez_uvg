@@ -82,10 +82,11 @@ no solo el propio.
 - [x] Filtro de estadísticas por modelo y nivel (RF-24)
 - [x] Exportación en JSON/CSV/PGN **y Excel con formato visual** (RF-25 y más allá — hojas de
       resumen, movimientos e intentos de IA coloreados por resultado)
-- [ ] **"Modo torneo": correr automáticamente todas las combinaciones posibles de enfrentamientos y
-      niveles** — único pendiente real de este frente. Hoy se puede cubrir manualmente desde la UI
-      (cada partida IA-IA corre sola una vez iniciada), pero no hay un barrido automatizado. Pendiente
-      explícito, ver `05-DECISIONES.md`
+- [x] **"Modo torneo" (alcance reducido)**: `backend/scripts/tournament.ts` corre cada modelo IA
+      contra cada otro, una vez por color, en un nivel fijo, vía la API real — no el barrido
+      combinatorio completo (3×3×3), que se descartó por tiempo (ver `05-DECISIONES.md`). Ejecutado
+      2 rondas (12 partidas) el 2026-10-09. Resultados completos, métricas y observaciones en
+      `08-RESULTADOS_TORNEO.md`
 - [x] Endpoints definidos y probados (ver tabla actualizada en `01-ARQUITECTURA.md`)
 - [x] Manejo seguro de claves: `.env`, `.gitignore`, `.env.example` (RNF-08, RNF-09)
 - [x] Incidencias técnicas registradas aparte, no cuentan como derrota deportiva (RN-08, RN-09)
@@ -103,13 +104,13 @@ no solo el propio.
 - [x] La funcionalidad adicional no interfiere con la lógica del juego (RN-12) — Groq corre aislado
       del flujo de jugadas reales, a propósito, para que una falla del comentarista nunca pueda tumbar
       una partida
-- [ ] **Ejecución del barrido completo de combinaciones posibles** (modelo × modelo × nivel × nivel)
-      — depende del "modo torneo" de Frente 3, todavía no construido
-- [ ] **Recolección de datos reales** de esas partidas a gran escala — hoy solo existen los datos de
-      las partidas de prueba jugadas manualmente durante el desarrollo (visibles en la vista de
-      Estadísticas), no un barrido sistemático
+- [x] **Ejecución del torneo reducido** (modelo × modelo, ambos colores, nivel fijo) — 2 rondas, 12
+      partidas, 2026-10-09. No es el barrido combinatorio completo (3×3×3), descartado por tiempo.
+- [x] **Datos reales recolectados**: las 12 partidas quedaron persistidas en Neon vía la API real,
+      exportables desde la UI igual que cualquier partida jugada manualmente
 - [ ] **Análisis de resultados con conclusiones argumentadas** sobre qué modelo se desempeña mejor —
-      bloqueado por los dos puntos anteriores; es el pendiente más importante antes de armar la
+      métricas, observaciones e IDs de partida ya listos en `08-RESULTADOS_TORNEO.md`. Falta que
+      Frente 4 lo convierta en slides/narrativa; es el pendiente más importante antes de armar la
       presentación (10% de la nota)
 - [ ] Material visual de la presentación (slides o demo en vivo)
 - [ ] Guion de exposición cronometrado (30 min, tope 35)
@@ -128,10 +129,9 @@ formatos (incluye Excel con colores), persistencia de partida, revisor de partid
 comentarista IA conectado a un LLM real, y una auditoría de UI/UX completa (sin emojis como íconos,
 contraste corregido, botones con tamaño táctil correcto).
 
-**Lo único que falta antes de poder escribir la sección de análisis de la presentación**: el modo
-torneo (barrido automático de combinaciones) y, con esos datos, el análisis comparativo de los 3
-modelos. Sin esto, Frente 4 no tiene con qué sustentar el 10% de "análisis de resultados" más allá de
-partidas sueltas.
+**El torneo reducido ya se corrió y está documentado en `08-RESULTADOS_TORNEO.md`** (métricas, IDs de
+partida, observaciones e ideas de slides ya redactadas). Lo único que falta para la sección de
+análisis de la presentación es que Frente 4 lo lleve a slides/narrativa — los datos ya están listos.
 
 **Housekeeping pendiente, no bloquea la demo**: la elección de herramienta de gestión de tareas
 (nunca se decidió, ver `05-DECISIONES.md`) — decisión del equipo: no se espera que el docente la
@@ -142,5 +142,6 @@ cuestione.
   dueño (Jean Marco) implementó ambos.
 - Frente 1 dependía de que Frente 3 tuviera los endpoints básicos disponibles — ya no aplica, todo
   está integrado end-to-end.
-- Frente 4 depende de que exista el modo torneo (Frente 3) antes de poder correr el barrido completo
-  de combinaciones — este es el bloqueo activo hoy.
+- Frente 4 dependía de que existiera el torneo (Frente 3) para tener datos reales de comparación —
+  ya no es un bloqueo: el torneo reducido se corrió y sus resultados están en
+  `08-RESULTADOS_TORNEO.md`, listos para usarse en el análisis.
