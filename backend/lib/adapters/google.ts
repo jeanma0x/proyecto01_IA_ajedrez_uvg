@@ -26,6 +26,7 @@ export class GoogleAdapter implements AiAdapter {
     const profile = DIFFICULTY_PROFILES[request.difficulty];
 
     let rawText: string;
+    let reasoningSummary = "";
 
     try {
       const response = await withTimeout(
@@ -42,7 +43,10 @@ export class GoogleAdapter implements AiAdapter {
             // llega truncada a medias (bug real encontrado el 2026-10-08:
             // ver docs/04-MODELOS_PENDIENTE.md). La tarea es elegir una
             // jugada, no requiere razonamiento profundo.
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            // `includeThoughts` solo expone el resumen de ese razonamiento
+            // (no cambia cuánto piensa, sigue gobernado por thinkingLevel
+            // LOW) — se usa para mostrarlo en vivo durante la demo.
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW, includeThoughts: true },
           },
         }),
         request.timeoutMs,
@@ -56,13 +60,24 @@ export class GoogleAdapter implements AiAdapter {
       }
 
       rawText = response.text ?? "";
+      // Las partes marcadas con thought=true son el resumen de razonamiento,
+      // separado del texto final (que ya las excluye, ver tipos del SDK).
+      reasoningSummary = (response.candidates?.[0]?.content?.parts ?? [])
+        .filter((part) => part.thought && part.text)
+        .map((part) => part.text)
+        .join("\n")
+        .trim();
     } catch (error) {
       throw translateError(error);
     }
 
     const move = parseMoveArguments(rawText, rawText);
 
-    return { ...move, rawResponse: rawText.slice(0, 2000) };
+    return {
+      ...move,
+      rawResponse: rawText.slice(0, 2000),
+      reasoningSummary: reasoningSummary || undefined,
+    };
   }
 }
 

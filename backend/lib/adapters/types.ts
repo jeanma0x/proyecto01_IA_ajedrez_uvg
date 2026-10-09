@@ -39,6 +39,11 @@ export interface MoveResponse {
   to: string;
   promotion?: "q" | "r" | "b" | "n";
   rawResponse: string;
+  // Resumen del razonamiento del modelo antes de decidir la jugada, cuando el
+  // proveedor lo expone (hoy solo Google Gemini, vía `includeThoughts`). No
+  // se persiste en base de datos — es transitorio, solo para mostrarlo en
+  // vivo en el turno en que se generó.
+  reasoningSummary?: string;
 }
 
 export interface AiAdapter {

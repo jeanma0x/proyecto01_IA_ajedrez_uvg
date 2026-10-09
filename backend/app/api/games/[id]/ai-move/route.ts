@@ -139,7 +139,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         });
 
         const updated = await commitMove(game, move, latencyMs);
-        return NextResponse.json(serializeGame(updated));
+        // reasoningSummary es transitorio (solo Google Gemini lo expone) —
+        // se manda tal cual en la respuesta, nunca se persiste en la DB, para
+        // mostrarlo en vivo en el turno en que se generó.
+        return NextResponse.json({ ...serializeGame(updated), lastMoveReasoning: move.reasoningSummary ?? null });
       } catch (error) {
         const latencyMs = Date.now() - startedAt;
 

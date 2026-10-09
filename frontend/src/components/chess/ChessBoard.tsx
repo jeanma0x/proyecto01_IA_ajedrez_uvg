@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-import { AlertTriangle, Crown } from "lucide-react";
+import { AlertTriangle, Brain, Crown } from "lucide-react";
 
 import { Chessboard } from "react-chessboard";
 
@@ -360,6 +360,23 @@ export function ChessBoard({
                 </p>
               </div>
             )}
+
+          {/* RAZONAMIENTO DE LA IA — solo Gemini lo expone (ver
+              lib/adapters/google.ts, includeThoughts). Se queda visible
+              hasta la siguiente jugada que lo reemplace o lo limpie. */}
+          {game.lastMoveReasoning && (
+            <div className="mt-4 rounded-lg border border-[#493522] bg-[#1B130F] p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <Brain className="h-4 w-4 text-[#E8B84B]" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#B6A18A]">
+                  Razonamiento de Gemini (en inglés)
+                </span>
+              </div>
+              <p className="m-0 text-sm italic leading-relaxed text-[#D9C5A7]">
+                {game.lastMoveReasoning}
+              </p>
+            </div>
+          )}
 
           {isSubmittingMove && (
             <p className="mb-0 mt-3 text-sm text-[#E8B84B]">

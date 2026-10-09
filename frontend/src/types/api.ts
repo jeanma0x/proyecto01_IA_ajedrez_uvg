@@ -79,6 +79,11 @@ export interface GameState {
 
   isCheck: boolean;
   checkedSquare: string | null;
+
+  // Transitorio: solo presente en la respuesta de /ai-move cuando quien
+  // jugó fue Google Gemini (único proveedor que expone su razonamiento vía
+  // `includeThoughts`). No se persiste, no viene en GET /games/:id.
+  lastMoveReasoning?: string | null;
 }
 
 export interface CreateGameRequest {
