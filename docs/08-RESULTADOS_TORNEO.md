@@ -24,17 +24,22 @@ jugada por jugada y exportar (Excel/CSV/JSON/PGN) desde la UI como cualquier otr
 
 ## Resultado principal
 
+Las 12 partidas del torneo se jugaron en nivel `advanced` para ambos bandos (ver más abajo por qué
+ese nivel específicamente es importante para interpretar bien este resultado).
+
 | Modelo (empresa) | Partidas jugadas | Ganadas | Perdidas | Empatadas | Incidencias técnicas | % incidencia |
 |---|---|---|---|---|---|---|
 | **Gemini 3.8 Flash** (Google) | 8 | **3** | 0 | 0 | 5 | 62.5% |
 | **Claude Haiku 4.5** (Anthropic) | 8 | 0 | **3** | 0 | 5 | 62.5% |
-| **GPT-5 Nano** (OpenAI) | 8 | 0 | 0 | 0 | **8** | **100%** |
+| **GPT-5 Nano** (OpenAI) | 8 | 0 | 0 | 0 | **8** | **100%** (solo en nivel `advanced` — ver precisión abajo) |
 
 - De las 12 partidas, **solo 3 terminaron con un resultado deportivo** (jaque mate) — las otras 9
   terminaron en incidencia técnica (RN-08/RN-09: no cuentan como derrota, se registran aparte).
 - **Gemini 3.8 Flash ganó las 3 partidas decisivas que se jugaron**, siempre contra Claude Haiku, con
   ambos colores (47 y 39 jugadas con blancas, 38 jugadas con negras). Invicto en el torneo.
-- **GPT-5 Nano no logró terminar ni una sola de sus 8 partidas.**
+- **GPT-5 Nano no logró terminar ni una sola de sus 8 partidas en `advanced`** — pero sí fue
+  perfectamente confiable en `beginner` (4/4, ver la sección de precisión más abajo). No es que el
+  modelo "no sirva", es que el nivel `advanced`/`master` lo hace fallar.
 
 ## Observación clave: la confiabilidad también es un resultado
 
@@ -61,6 +66,37 @@ pena presentarlo como tal en vez de ocultarlo:
 La causa secundaria de incidencias (1 de las 9) fue un comportamiento ya conocido de Claude Haiku:
 repitió la misma jugada ilegal 3 veces seguidas pese a recibir retroalimentación explícita de que no
 la repitiera, agotando el presupuesto de reintentos (RF-15).
+
+## Precisión importante: el problema de GPT-5 Nano es solo en `advanced`/`master`
+
+Después del torneo se hizo una verificación adicional específicamente para separar "el modelo falla
+siempre" de "el modelo falla bajo cierta condición". Se corrieron 4 partidas más de GPT-5 Nano (contra
+los otros dos modelos, ambos colores) pero en nivel **`beginner`** en vez de `advanced`:
+
+| Partida (nivel `beginner`) | Resultado | Jugadas | ID |
+|---|---|---|---|
+| gemini-flash vs gpt-5-nano | Ganan blancas (jaque mate) | 31 | `cmv13z88200018okkaghfjm2v` |
+| claude-haiku vs gpt-5-nano | Tablas (material insuficiente) | 155 | `cmv144li2003n8okk1yymrqlo` |
+| gpt-5-nano vs gemini-flash | Ganan negras (jaque mate) | 32 | `cmv14ozgi00l98okkya4w60g9` |
+| gpt-5-nano vs claude-haiku | Ganan negras (jaque mate) | 26 | `cmv14szo300ox8okknoww7jsi` |
+
+**4 de 4 terminaron sin ninguna incidencia** — contraste total con el 8/8 fallido en `advanced`.
+
+La causa probable: el prompt de cada nivel le da una instrucción distinta (ver
+`backend/lib/adapters/prompt.ts`). `beginner` dice *"Elige rápidamente una jugada legal razonable. No
+expliques tu razonamiento."*; `advanced` dice *"Analiza brevemente la posición antes de decidir tu
+jugada."* — para un modelo de razonamiento como GPT-5 Nano, esa instrucción de "analizar" parece
+empujarlo a gastar más tokens de razonamiento interno de los que el presupuesto permite, justo el
+problema que se vio en el torneo. En `beginner` la instrucción lo mantiene corto y el modelo responde
+de forma confiable.
+
+**Conclusión revisada, más útil que "GPT-5 Nano no sirve"**: GPT-5 Nano es confiable en `beginner`
+(consistente con las pruebas manuales que el equipo ya había hecho en la UI) pero no en
+`advanced`/`master`, donde la instrucción de "analizar" lo lleva a agotar su presupuesto de
+razonamiento. Esto es en sí un dato interesante para el análisis: la confiabilidad de un modelo de
+razonamiento puede depender de qué tan exigente sea la instrucción que se le da, no solo del modelo en
+sí. **Para la demo en vivo de esta noche: si alguien elige GPT-5 Nano, usar nivel `beginner` para
+evitar el riesgo de incidencia.**
 
 ## IDs de partida (las 12 del torneo limpio)
 
@@ -100,9 +136,12 @@ de arriba si se corre una ronda nueva para la demo.
 ## Ideas para la sección de análisis (Frente 4)
 
 - Slide de resultado: la tabla de la sección "Resultado principal" tal cual, es autoexplicativa.
-- Slide de confiabilidad: usar la observación de GPT-5 Nano como ejemplo de que "elegir un LLM" no es
-  solo comparar quién juega mejor ajedrez, sino también quién responde de forma confiable bajo
-  restricciones de formato — relevante para cualquier producto real que dependa de function calling.
+- Slide de confiabilidad: GPT-5 Nano 8/8 fallido en `advanced` vs. 4/4 exitoso en `beginner` es un
+  mejor dato que "el modelo falla" — muestra que la confiabilidad de un modelo de razonamiento puede
+  depender de qué tan exigente sea la instrucción, no solo del modelo en sí. Relevante para cualquier
+  producto real que dependa de function calling con modelos de razonamiento.
 - Si da tiempo de aquí a la presentación, correr 1-2 rondas más (mismo comando) solo ayuda a tener más
   partidas decisivas de Gemini vs Claude Haiku para reforzar el "invicto"; no va a cambiar el
-  diagnóstico de GPT-5 Nano, que ya está confirmado con 8/8 intentos fallidos.
+  diagnóstico de GPT-5 Nano en `advanced`, que ya está confirmado con 8/8 intentos fallidos.
+- **Para la demo en vivo**: si alguien va a elegir GPT-5 Nano frente al docente, usar nivel
+  `beginner` — es el único nivel confirmado confiable para ese modelo.
